@@ -1,0 +1,2284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brief Agent — Currency Converter Design Assignment</title>
+<meta name="description" content="An autonomous UX design agent that runs a design brief end-to-end: research plan, audience, personas, feature definition, IA, and a live interactive currency-converter prototype.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%230A0C0E'/%3E%3Cpath d='M62 30H38a10 10 0 0 0 0 20h24a10 10 0 0 1 0 20H38' stroke='%236EE7B7' stroke-width='8' fill='none' stroke-linecap='round'/%3E%3Cpath d='M50 22v56' stroke='%236EE7B7' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   BRIEF AGENT — design tokens
+   ============================================================ */
+:root{
+  --bg:#0A0C0E; --surface:#101418; --surface-2:#151A20; --surface-3:#1B222A;
+  --line:#222B34; --line-soft:#182029;
+  --txt:#E6EDF3; --dim:#94A3B2; --faint:#5E6B79;
+  --mint:#6EE7B7; --mint-2:#34D399; --mint-bg:rgba(110,231,183,.10); --mint-line:rgba(110,231,183,.28);
+  --amber:#FBBF24; --amber-bg:rgba(251,191,36,.10);
+  --blue:#7DB4FF; --blue-bg:rgba(125,180,255,.10);
+  --red:#F87171; --red-bg:rgba(248,113,113,.10);
+  --violet:#C4B5FD;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,sans-serif;
+  --r:12px; --r-lg:16px;
+  --rail:264px;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--txt);
+  font-family:var(--sans); font-size:14px; line-height:1.55;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none;padding:0}
+a{color:var(--mint);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:rgba(110,231,183,.25)}
+:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* scrollbars */
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#232C35;border-radius:8px;border:3px solid var(--bg)}
+*::-webkit-scrollbar-thumb:hover{background:#2E3945}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+#app{display:flex;flex-direction:column;height:100dvh}
+
+header.top{
+  display:flex;align-items:center;gap:14px;flex-shrink:0;
+  height:56px;padding:0 16px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#0E1216,#0A0C0E);
+  position:relative;z-index:40;
+}
+.brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.brand .mark{
+  width:26px;height:26px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(140deg,var(--mint),#2DD4BF);
+  display:grid;place-items:center;color:#04120C;font-weight:800;font-size:14px;
+  box-shadow:0 0 0 1px rgba(110,231,183,.35),0 3px 14px rgba(52,211,153,.22);
+}
+.brand b{font-size:14px;letter-spacing:-.01em;font-weight:650}
+.brand span{color:var(--faint);font-size:11px;font-family:var(--mono);margin-left:2px}
+
+.top .spacer{flex:1}
+.briefchip{
+  display:flex;align-items:center;gap:8px;max-width:min(38vw,420px);
+  padding:5px 10px 5px 8px;border:1px solid var(--line);border-radius:999px;
+  background:var(--surface);color:var(--dim);font-size:12px;
+  transition:border-color .16s var(--ease),color .16s var(--ease);
+}
+.briefchip:hover{border-color:#31404E;color:var(--txt)}
+.briefchip .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);flex-shrink:0}
+.briefchip .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  height:32px;padding:0 13px;border-radius:9px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--txt);
+  font-size:13px;font-weight:520;white-space:nowrap;
+  transition:background .16s var(--ease),border-color .16s var(--ease),transform .1s var(--ease),opacity .16s;
+}
+.btn:hover{background:var(--surface-3);border-color:#31404E}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.42;cursor:not-allowed;transform:none}
+.btn.primary{
+  background:linear-gradient(180deg,var(--mint),var(--mint-2));
+  color:#04120C;border-color:transparent;font-weight:640;
+  box-shadow:0 1px 0 rgba(255,255,255,.22) inset,0 3px 14px rgba(52,211,153,.20);
+}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.sm{height:27px;padding:0 10px;font-size:12px;border-radius:8px}
+.btn.icon{width:32px;padding:0}
+.btn .dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+.btn .dot.ok{background:var(--mint)}
+
+/* ============================================================
+   BODY: rail + canvas
+   ============================================================ */
+.body{display:flex;flex:1;min-height:0}
+
+aside.rail{
+  width:var(--rail);flex-shrink:0;border-right:1px solid var(--line);
+  background:#0C1013;display:flex;flex-direction:column;min-height:0;
+}
+.rail-head{
+  padding:14px 16px 10px;border-bottom:1px solid var(--line-soft);flex-shrink:0;
+}
+.rail-head .t{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.rail-head .p{display:flex;align-items:baseline;gap:7px;margin-top:5px}
+.rail-head .p b{font-size:19px;font-weight:640;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rail-head .p span{font-size:11px;color:var(--faint);font-family:var(--mono)}
+.pbar{height:3px;border-radius:2px;background:var(--surface-3);margin-top:9px;overflow:hidden}
+.pbar i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,var(--mint),#2DD4BF);transition:width .5s var(--ease)}
+
+.stages{flex:1;overflow-y:auto;padding:8px}
+.stage{
+  display:flex;gap:10px;width:100%;text-align:left;
+  padding:9px 10px;border-radius:10px;border:1px solid transparent;
+  transition:background .15s var(--ease),border-color .15s var(--ease);position:relative;
+}
+.stage:hover{background:var(--surface)}
+.stage.active{background:var(--surface-2);border-color:var(--line)}
+.stage.done .s-name{color:var(--txt)}
+.stage .s-ico{
+  width:22px;height:22px;border-radius:7px;flex-shrink:0;margin-top:1px;
+  display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:600;
+  background:var(--surface-2);color:var(--faint);border:1px solid var(--line-soft);
+  transition:all .2s var(--ease);
+}
+.stage.done .s-ico{background:var(--mint-bg);color:var(--mint);border-color:var(--mint-line)}
+.stage.running .s-ico{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,.3)}
+.stage.error .s-ico{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,.3)}
+.stage .s-body{min-width:0;flex:1;display:block}
+.stage .s-name{display:block;font-size:12.5px;font-weight:530;color:var(--dim);line-height:1.35;letter-spacing:-.005em}
+.stage .s-meta{display:block;font-size:10.5px;color:var(--faint);font-family:var(--mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage.running .s-meta{color:var(--amber)}
+.stage.error .s-meta{color:var(--red)}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.rail-foot{padding:10px;border-top:1px solid var(--line-soft);display:grid;gap:6px;flex-shrink:0}
+.railbtn{
+  display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:9px;
+  color:var(--dim);font-size:12.5px;transition:background .15s,color .15s;text-align:left;
+}
+.railbtn:hover{background:var(--surface);color:var(--txt)}
+.railbtn svg{flex-shrink:0;opacity:.75}
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+main.canvas{flex:1;overflow-y:auto;min-width:0;scroll-behavior:smooth;position:relative}
+.wrap{max-width:940px;margin:0 auto;padding:32px 28px 190px}
+
+/* hero / empty state */
+.hero{padding:36px 0 8px;animation:rise .5s var(--ease) both}
+.hero .eyebrow{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mint);background:var(--mint-bg);border:1px solid var(--mint-line);
+  padding:4px 10px;border-radius:999px;
+}
+.hero h1{
+  font-size:clamp(26px,4.4vw,40px);line-height:1.1;letter-spacing:-.03em;font-weight:640;
+  margin:16px 0 0;max-width:20ch;
+}
+.hero h1 em{font-style:normal;color:var(--mint)}
+.hero p.lede{color:var(--dim);font-size:15px;max-width:60ch;margin:14px 0 0;line-height:1.6}
+
+.pipeline-preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:26px}
+.pp{border:1px solid var(--line-soft);border-radius:10px;padding:11px 12px;background:var(--surface)}
+.pp .n{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.pp .t{font-size:12.5px;margin-top:3px;color:var(--dim);font-weight:520;line-height:1.35}
+
+.cta-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:28px}
+.cta-note{font-size:12px;color:var(--faint);max-width:44ch;line-height:1.5}
+
+/* transcript events */
+.event{
+  display:flex;gap:12px;padding:10px 0;animation:rise .35s var(--ease) both;
+}
+.event .gutter{width:22px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.event .gutter .d{width:7px;height:7px;border-radius:50%;background:var(--surface-3);margin-top:6px;flex-shrink:0}
+.event .gutter .line{flex:1;width:1px;background:var(--line-soft);min-height:4px}
+.event.tool .gutter .d{background:var(--blue)}
+.event.think .gutter .d{background:var(--violet)}
+.event.done .gutter .d{background:var(--mint)}
+.event.err .gutter .d{background:var(--red)}
+.event .ev-body{flex:1;min-width:0;padding-bottom:2px}
+.event .ev-t{font-size:12.5px;color:var(--dim);font-family:var(--mono)}
+.event .ev-t b{color:var(--txt);font-weight:550}
+.event.think .ev-t{color:var(--violet)}
+.event.tool .ev-t{color:var(--blue)}
+.event.err .ev-t{color:var(--red)}
+.wire{
+  font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--faint);
+  background:#0B0F13;border:1px solid var(--line-soft);border-radius:9px;
+  padding:9px 11px;margin-top:7px;max-height:104px;overflow:hidden;position:relative;
+  white-space:pre-wrap;word-break:break-word;
+}
+.wire::after{content:"";position:absolute;inset:auto 0 0 0;height:36px;background:linear-gradient(180deg,transparent,#0B0F13)}
+.wire .cur{display:inline-block;width:6px;height:11px;background:var(--mint);vertical-align:-1px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ============================================================
+   DELIVERABLE CARDS
+   ============================================================ */
+.card{
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
+  margin:18px 0;overflow:hidden;animation:rise .45s var(--ease) both;
+  scroll-margin-top:20px;
+}
+.card > header{
+  display:flex;align-items:center;gap:11px;padding:14px 18px;
+  border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg,#131920,#101418);
+}
+.card > header .num{
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--mint);
+  background:var(--mint-bg);border:1px solid var(--mint-line);
+  padding:3px 7px;border-radius:6px;flex-shrink:0;
+}
+.card > header h2{font-size:15px;font-weight:600;margin:0;letter-spacing:-.015em;flex:1;min-width:0}
+.card > header .src{font-size:10.5px;font-family:var(--mono);color:var(--faint);flex-shrink:0}
+.card > header .src.live{color:var(--mint)}
+.card .cbody{padding:18px}
+.card .cbody > *:first-child{margin-top:0}
+.card .cbody > *:last-child{margin-bottom:0}
+
+h3.sec{
+  font-size:11px;font-family:var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--faint);margin:22px 0 10px;font-weight:600;
+  display:flex;align-items:center;gap:9px;
+}
+h3.sec::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+p{margin:0 0 11px}
+.card p{color:#C3CEDA;line-height:1.65}
+.muted{color:var(--dim)}
+strong{font-weight:600;color:var(--txt)}
+
+ul.clean{list-style:none;padding:0;margin:0 0 4px;display:grid;gap:7px}
+ul.clean li{display:flex;gap:9px;color:#C3CEDA;line-height:1.55;align-items:flex-start}
+ul.clean li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--mint);flex-shrink:0;margin-top:8px;opacity:.7}
+ul.clean.num{counter-reset:n}
+ul.clean.num li{counter-increment:n}
+ul.clean.num li::before{
+  content:counter(n);width:auto;height:auto;background:none;border-radius:0;margin-top:0;
+  font-family:var(--mono);font-size:10.5px;color:var(--mint);opacity:1;min-width:14px;padding-top:2px;
+}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+
+.tile{border:1px solid var(--line-soft);border-radius:11px;padding:13px 14px;background:var(--surface-2)}
+.tile .k{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.tile .v{font-size:14px;margin-top:5px;color:#D5DEE7;line-height:1.5}
+
+.stat{border:1px solid var(--line-soft);border-radius:11px;padding:14px;background:var(--surface-2)}
+.stat .n{font-size:22px;font-weight:640;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .n.mint{color:var(--mint)} .stat .n.amber{color:var(--amber)} .stat .n.blue{color:var(--blue)}
+.stat .l{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.4}
+.stat .s{font-size:10.5px;color:var(--faint);margin-top:6px;font-family:var(--mono)}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th{
+  text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+table.tbl td{padding:10px;border-bottom:1px solid var(--line-soft);color:#C3CEDA;vertical-align:top;line-height:1.5}
+table.tbl tr:last-child td{border-bottom:none}
+table.tbl td:first-child,table.tbl th:first-child{padding-left:0}
+table.tbl td:last-child,table.tbl th:last-child{padding-right:0}
+table.tbl td b{color:var(--txt)}
+.scroller{overflow-x:auto;margin:0 -2px;padding:0 2px}
+
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:2.5px 8px;border-radius:999px;
+  font-size:10.5px;font-family:var(--mono);letter-spacing:.03em;font-weight:600;
+  border:1px solid var(--line);background:var(--surface-3);color:var(--dim);white-space:nowrap;
+}
+.pill.must{background:var(--mint-bg);border-color:var(--mint-line);color:var(--mint)}
+.pill.should{background:var(--blue-bg);border-color:rgba(125,180,255,.28);color:var(--blue)}
+.pill.could{background:var(--amber-bg);border-color:rgba(251,191,36,.28);color:var(--amber)}
+.pill.wont{background:var(--red-bg);border-color:rgba(248,113,113,.25);color:var(--red)}
+
+/* personas */
+.persona{border:1px solid var(--line-soft);border-radius:13px;background:var(--surface-2);overflow:hidden}
+.persona .ph{display:flex;gap:12px;align-items:center;padding:14px;border-bottom:1px solid var(--line-soft)}
+.persona .av{
+  width:42px;height:42px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;
+  font-weight:640;font-size:15px;letter-spacing:-.02em;color:#04120C;
+}
+.persona .pn{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.persona .pr{font-size:11.5px;color:var(--dim);margin-top:1px}
+.persona .pb{padding:14px;display:grid;gap:12px}
+.persona .quote{
+  font-size:13px;font-style:italic;color:#CFD9E3;line-height:1.6;
+  border-left:2px solid var(--mint);padding-left:11px;
+}
+.pk{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+
+.bars{display:grid;gap:7px}
+.bar{display:flex;align-items:center;gap:9px;font-size:12px}
+.bar .bl{width:96px;flex-shrink:0;color:var(--dim);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars.wide .bl{width:min(190px,38vw)}
+.gridp{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.bar .bt{flex:1;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.bar .bt i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--mint),#2DD4BF);transition:width .8s var(--ease)}
+.bar .bv{width:30px;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--faint);flex-shrink:0}
+
+.callout{
+  border:1px solid var(--mint-line);background:var(--mint-bg);border-radius:11px;
+  padding:13px 15px;margin:14px 0;
+}
+.callout .ct{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--mint);margin-bottom:6px;font-weight:600}
+.callout p{color:#D3E5DC;margin:0;font-size:13.5px;line-height:1.6}
+
+.flowmap{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.fnode{
+  flex:1;min-width:118px;border:1px solid var(--line-soft);border-radius:10px;
+  padding:11px;background:var(--surface-2);position:relative;
+}
+.fnode .fn{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.06em}
+.fnode .ft{font-size:12.5px;font-weight:550;margin-top:4px;letter-spacing:-.005em}
+.fnode .fd{font-size:11px;color:var(--dim);margin-top:4px;line-height:1.45}
+
+/* ============================================================
+   PHONE PROTOTYPE  (light UI — the focal object)
+   ============================================================ */
+.protowrap{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:26px;align-items:start}
+@media(max-width:760px){.protowrap{grid-template-columns:1fr}}
+
+.phone{
+  width:300px;height:620px;border-radius:44px;padding:11px;margin:0 auto;
+  background:linear-gradient(160deg,#2A333D,#12181E);
+  box-shadow:0 0 0 1px rgba(255,255,255,.07),0 26px 60px -12px rgba(0,0,0,.75),0 0 70px -20px rgba(52,211,153,.22);
+  flex-shrink:0;position:sticky;top:16px;
+}
+.screen{
+  width:100%;height:100%;border-radius:34px;overflow:hidden;position:relative;
+  background:var(--p-bg);color:var(--p-ink);
+  --p-bg:#F6F8FA; --p-card:#FFFFFF; --p-ink:#0F172A; --p-mut:#64748B;
+  --p-acc:#0E9F6E; --p-acc-bg:#E7F7F0; --p-line:#E8ECF1; --p-warn:#B45309; --p-warn-bg:#FEF6E7;
+  display:flex;flex-direction:column;font-size:13px;
+}
+.screen *{box-sizing:border-box}
+.notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:104px;height:24px;background:#12181E;border-radius:0 0 14px 14px;z-index:20;
+}
+.sbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 20px 4px;font-size:11px;font-weight:640;color:var(--p-ink);flex-shrink:0;
+}
+.sbar .r{display:flex;gap:4px;align-items:center}
+.sbar svg{opacity:.85}
+
+.pscroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 15px 15px;-webkit-overflow-scrolling:touch}
+.pscroll::-webkit-scrollbar{width:0}
+
+.phead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0 12px}
+.phead .h1{font-size:19px;font-weight:680;letter-spacing:-.03em}
+.phead .sub{font-size:11px;color:var(--p-mut);margin-top:1px}
+.pavatar{width:31px;height:31px;border-radius:50%;background:var(--p-acc-bg);color:var(--p-acc);display:grid;place-items:center;font-weight:680;font-size:12px;flex-shrink:0}
+
+.offline{
+  display:none;align-items:center;gap:7px;background:var(--p-warn-bg);color:var(--p-warn);
+  border-radius:9px;padding:7px 10px;font-size:11px;font-weight:560;margin-bottom:10px;
+}
+.offline.on{display:flex}
+
+.convcard{
+  background:var(--p-card);border-radius:18px;padding:15px;
+  box-shadow:0 1px 2px rgba(15,23,42,.05),0 8px 22px -12px rgba(15,23,42,.14);
+}
+.ccrow{display:flex;align-items:center;gap:10px}
+.curbtn{
+  display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:11px;
+  background:var(--p-bg);border:1px solid var(--p-line);flex-shrink:0;
+  transition:background .15s,border-color .15s;min-height:38px;
+}
+.curbtn:active{background:#EDF1F5}
+.curbtn .flag{font-size:17px;line-height:1}
+.curbtn .code{font-weight:680;font-size:13px;letter-spacing:-.01em}
+.curbtn .chev{opacity:.4;flex-shrink:0}
+.amt{
+  flex:1;min-width:0;text-align:right;border:none;background:none;outline:none;
+  font-size:27px;font-weight:680;letter-spacing:-.035em;color:var(--p-ink);
+  font-variant-numeric:tabular-nums;padding:0;width:100%;
+}
+.amt::placeholder{color:#CBD5E1}
+.amt:read-only{cursor:default}
+.amt.out{color:var(--p-acc)}
+
+.swapline{display:flex;align-items:center;gap:10px;margin:11px 0}
+.swapline .ln{flex:1;height:1px;background:var(--p-line)}
+.swapbtn{
+  width:33px;height:33px;border-radius:50%;background:var(--p-acc);color:#fff;
+  display:grid;place-items:center;flex-shrink:0;
+  box-shadow:0 3px 10px -2px rgba(14,159,110,.5);
+  transition:transform .35s var(--ease);
+}
+.swapbtn:active{transform:scale(.92)}
+.swapbtn.spin{transform:rotate(180deg)}
+
+.ratebar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:12px;padding-top:11px;border-top:1px solid var(--p-line);
+  font-size:11.5px;color:var(--p-mut);
+}
+.ratebar .rv{font-weight:640;color:var(--p-ink);font-variant-numeric:tabular-nums}
+.ratebar .age{font-size:10px;display:flex;align-items:center;gap:4px}
+.ratebar .age .led{width:5px;height:5px;border-radius:50%;background:var(--p-acc)}
+.ratebar .age.stale .led{background:#F59E0B}
+
+.chips{
+  display:flex;gap:6px;margin-top:11px;overflow-x:auto;padding-bottom:2px;
+  -webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);
+  mask-image:linear-gradient(90deg,#000 88%,transparent);
+}
+.chips::-webkit-scrollbar{height:0}
+.chip{
+  padding:5px 11px;border-radius:999px;background:var(--p-card);border:1px solid var(--p-line);
+  font-size:11.5px;font-weight:580;color:var(--p-mut);white-space:nowrap;flex-shrink:0;
+  transition:all .15s;min-height:28px;
+}
+.chip.on,.chip:active{background:var(--p-acc);border-color:var(--p-acc);color:#fff}
+
+.sechead{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:17px 0 8px;font-size:11px;font-weight:660;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--p-mut);
+}
+.sechead a{font-size:11px;color:var(--p-acc);font-weight:600;text-transform:none;letter-spacing:0}
+
+/* honest rate card — the differentiator */
+.honest{
+  background:var(--p-card);border-radius:16px;padding:13px 14px;
+  border:1px solid var(--p-line);
+}
+.honest .ht{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:660;margin-bottom:3px}
+.honest .ht .bdg{background:var(--p-acc-bg);color:var(--p-acc);font-size:9px;padding:2px 6px;border-radius:5px;letter-spacing:.04em}
+.honest .hs{font-size:10.5px;color:var(--p-mut);margin-bottom:11px;line-height:1.45}
+.hrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--p-line)}
+.hrow:first-of-type{border-top:none}
+.hrow .hl{flex:1;min-width:0}
+.hrow .hn{font-size:12px;font-weight:580;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .hd{font-size:10px;color:var(--p-mut);margin-top:1px}
+.hrow .hv{font-size:13px;font-weight:680;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hrow.best .hv{color:var(--p-acc)}
+.hrow.worst .hv{color:#DC2626}
+.hbar{height:4px;border-radius:2px;background:#EEF2F6;margin-top:5px;overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:2px;background:var(--p-acc);transition:width .7s var(--ease)}
+.hrow.worst .hbar i{background:#F87171}
+.hrow.mid .hbar i{background:#FBBF24}
+.hfoot{
+  margin-top:10px;padding-top:9px;border-top:1px solid var(--p-line);
+  font-size:10.5px;color:var(--p-mut);line-height:1.5;
+}
+.hfoot b{color:var(--p-ink)}
+
+/* watchlist */
+.wrow{
+  display:flex;align-items:center;gap:10px;background:var(--p-card);
+  border-radius:13px;padding:10px 12px;margin-bottom:7px;border:1px solid var(--p-line);
+}
+.wrow .wf{font-size:19px;line-height:1;flex-shrink:0}
+.wrow .wi{flex:1;min-width:0}
+.wrow .wc{font-size:12.5px;font-weight:640}
+.wrow .wn{font-size:10px;color:var(--p-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow .wv{text-align:right;flex-shrink:0}
+.wrow .wa{font-size:13.5px;font-weight:680;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.wrow .wd{font-size:10px;font-weight:600;font-variant-numeric:tabular-nums}
+.wd.up{color:var(--p-acc)} .wd.dn{color:#DC2626}
+
+.sparkbox{background:var(--p-card);border-radius:16px;padding:13px 14px;border:1px solid var(--p-line)}
+.sparkbox .sh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.sparkbox .st{font-size:12px;font-weight:640}
+.sparkbox .sc{font-size:10.5px;color:var(--p-mut)}
+.sparkbox svg{display:block;width:100%;height:52px;overflow:visible}
+
+/* tab bar */
+.tabbar{
+  display:flex;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);
+  border-top:1px solid var(--p-line);padding:7px 6px 9px;flex-shrink:0;
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:#94A3B8;transition:color .15s;padding:3px 0;min-height:44px;justify-content:center}
+.tab.on{color:var(--p-acc)}
+.tab .tl{font-size:9.5px;font-weight:620;letter-spacing:.01em}
+
+/* currency picker sheet */
+.sheet{
+  position:absolute;inset:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);
+  z-index:30;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .22s var(--ease);
+}
+.sheet.on{opacity:1;pointer-events:auto}
+.sheet-in{
+  width:100%;max-height:82%;background:var(--p-card);border-radius:22px 22px 0 0;
+  display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s var(--ease);
+}
+.sheet.on .sheet-in{transform:none}
+.sheet-h{padding:12px 15px 9px;border-bottom:1px solid var(--p-line);flex-shrink:0}
+.grab{width:34px;height:4px;border-radius:2px;background:#CBD5E1;margin:0 auto 10px}
+.sheet-h .sht{font-size:14px;font-weight:680;margin-bottom:9px}
+.search{
+  display:flex;align-items:center;gap:7px;background:var(--p-bg);border-radius:10px;padding:8px 11px;
+  border:1px solid var(--p-line);
+}
+.search input{flex:1;border:none;background:none;outline:none;font-size:13px;color:var(--p-ink);min-width:0}
+.sheet-l{flex:1;overflow-y:auto;padding:5px 8px 14px}
+.crow{
+  display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:11px;width:100%;text-align:left;
+  transition:background .12s;min-height:44px;
+}
+.crow:active,.crow:hover{background:var(--p-bg)}
+.crow.sel{background:var(--p-acc-bg)}
+.crow .cf{font-size:20px;line-height:1;flex-shrink:0;width:24px;text-align:center}
+.crow .ci{flex:1;min-width:0}
+.crow .cc{font-size:13px;font-weight:640}
+.crow .cn{font-size:10.5px;color:var(--p-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .ck{color:var(--p-acc);flex-shrink:0}
+
+/* prototype side notes */
+.protonotes{display:grid;gap:12px;align-content:start}
+.pnote{border:1px solid var(--line-soft);border-radius:12px;padding:13px 14px;background:var(--surface-2)}
+.pnote .pt{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;margin-bottom:5px}
+.pnote .pt .i{width:19px;height:19px;border-radius:6px;background:var(--mint-bg);color:var(--mint);display:grid;place-items:center;font-size:10px;font-family:var(--mono);flex-shrink:0;border:1px solid var(--mint-line)}
+.pnote p{font-size:12.5px;color:var(--dim);margin:0;line-height:1.55}
+.pnote .who{font-size:11px;color:var(--faint);margin-top:6px;font-family:var(--mono)}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.scrim{
+  position:fixed;inset:0;background:rgba(4,6,8,.72);backdrop-filter:blur(4px);z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .2s var(--ease);
+}
+.scrim.on{opacity:1;pointer-events:auto}
+.modal{
+  width:100%;max-width:560px;max-height:86vh;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;
+  box-shadow:0 30px 80px -18px rgba(0,0,0,.8);
+  transform:translateY(12px) scale(.985);transition:transform .24s var(--ease);
+}
+.scrim.on .modal{transform:none}
+.modal header{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-soft)}
+.modal header h2{font-size:15px;font-weight:600;margin:0;flex:1;letter-spacing:-.015em}
+.modal .mbody{padding:18px;overflow-y:auto}
+.modal footer{display:flex;gap:9px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.close{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--faint);transition:background .15s,color .15s;flex-shrink:0}
+.close:hover{background:var(--surface-3);color:var(--txt)}
+
+label.fl{display:block;font-size:11px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;font-weight:600}
+.inp,textarea.inp,select.inp{
+  width:100%;background:#0B0F13;border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;font-size:13.5px;color:var(--txt);outline:none;
+  transition:border-color .15s,box-shadow .15s;font-family:inherit;
+}
+.inp:focus{border-color:var(--mint-line);box-shadow:0 0 0 3px rgba(110,231,183,.09)}
+textarea.inp{resize:vertical;min-height:150px;line-height:1.6;font-size:13px}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B2' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.hint{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.55}
+.hint a{color:var(--mint)}
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+
+.keystate{
+  display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--line-soft);font-size:12.5px;color:var(--dim);margin-bottom:16px;
+}
+.keystate .d{width:7px;height:7px;border-radius:50%;background:var(--faint);flex-shrink:0}
+.keystate.ok{border-color:var(--mint-line);background:var(--mint-bg);color:var(--mint)}
+.keystate.ok .d{background:var(--mint)}
+.keystate.bad{border-color:rgba(248,113,113,.3);background:var(--red-bg);color:var(--red)}
+.keystate.bad .d{background:var(--red)}
+
+.presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.preset{
+  padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);
+  font-size:12px;color:var(--dim);transition:all .15s;
+}
+.preset:hover{border-color:var(--mint-line);color:var(--mint);background:var(--mint-bg)}
+
+/* toast */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translate(-50%,16px);
+  background:var(--surface-3);border:1px solid var(--line);border-radius:11px;
+  padding:10px 16px;font-size:13px;z-index:200;box-shadow:0 12px 34px -8px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:all .24s var(--ease);max-width:90vw;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{border-color:rgba(248,113,113,.4);color:var(--red)}
+
+/* floating run bar */
+.runbar{
+  position:sticky;bottom:0;margin:0 -28px -190px;padding:14px 28px 20px;
+  background:linear-gradient(180deg,transparent,var(--bg) 40%);
+  display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;
+  pointer-events:none;
+}
+.runbar > *{pointer-events:auto}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media(max-width:900px){
+  body{overflow:auto}
+  #app{height:auto;min-height:100dvh}
+  .body{flex-direction:column}
+  aside.rail{width:100%;border-right:none;border-bottom:1px solid var(--line)}
+  .stages{max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px}
+  .rail-foot{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+  main.canvas{overflow:visible}
+  .wrap{padding:22px 16px 150px}
+  .runbar{padding:14px 16px 18px;position:fixed;left:0;right:0;bottom:0;margin:0;background:linear-gradient(180deg,transparent,var(--bg) 45%)}
+  .phone{position:static}
+  .briefchip{display:none}
+}
+@media(max-width:560px){
+  header.top{height:52px;padding:0 12px;gap:9px}
+  .brand span{display:none}
+  .hero h1{font-size:26px}
+  .card .cbody{padding:14px}
+  .modal{max-height:92vh}
+  .phone{width:100%;max-width:300px;height:600px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+/* print / export */
+@media print{
+  body{overflow:visible;background:#fff;color:#111}
+  header.top,aside.rail,.runbar,.hero .cta-row{display:none}
+  .card{break-inside:avoid;border-color:#ddd;background:#fff}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark">⇄</div>
+      <b>Brief Agent</b><span>v1.0</span>
+    </div>
+
+    <button class="briefchip" id="briefChip" title="Edit the design brief">
+      <span class="lbl">Brief</span>
+      <span class="val" id="briefLabel">Currency Converter Mobile App</span>
+    </button>
+
+    <div class="spacer"></div>
+
+    <button class="btn ghost sm" id="keyBtn" title="Connect an Anthropic API key">
+      <span class="dot" id="keyDot"></span><span id="keyLabel">Offline mode</span>
+    </button>
+    <button class="btn primary" id="runBtn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <span id="runLabel">Run agent</span>
+    </button>
+  </header>
+
+  <div class="body">
+
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="t">Pipeline</div>
+        <div class="p"><b id="progNum">0/7</b><span id="progWord">stages complete</span></div>
+        <div class="pbar"><i id="progBar"></i></div>
+      </div>
+      <nav class="stages" id="stageList" aria-label="Agent pipeline stages"></nav>
+      <div class="rail-foot">
+        <button class="railbtn" id="exportBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export submission
+        </button>
+        <button class="railbtn" id="resetBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset run
+        </button>
+      </div>
+    </aside>
+
+    <main class="canvas" id="canvas">
+      <div class="wrap" id="wrap">
+        <section class="hero" id="hero">
+          <div class="eyebrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/></svg>
+            Autonomous design agent
+          </div>
+          <h1>It runs the whole brief, then <em>builds the thing</em>.</h1>
+          <p class="lede">
+            Seven chained stages take a design assignment from raw brief to a working prototype —
+            research plan, competitive teardown, audience sizing, personas, prioritised features,
+            information architecture, and a live interactive mobile app you can actually use.
+          </p>
+
+          <div class="pipeline-preview" id="pipePreview"></div>
+
+          <div class="cta-row">
+            <button class="btn primary" id="runBtn2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              Run the agent
+            </button>
+            <button class="btn" id="briefBtn2">Edit brief</button>
+            <button class="btn ghost" id="keyBtn2">Connect API key</button>
+          </div>
+          <p class="cta-note" id="ctaNote">
+            Runs immediately with a researched baseline — no key, no signup. Add your own Anthropic
+            key to have Claude regenerate every stage live against whatever brief you load.
+          </p>
+        </section>
+
+        <div id="stream"></div>
+
+        <div class="runbar" id="runbar" style="display:none">
+          <button class="btn primary" id="runBtn3">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span>Run again</span>
+          </button>
+          <button class="btn" id="exportBtn2">Export submission</button>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- ============ API KEY MODAL ============ -->
+<div class="scrim" id="keyScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="keyTitle">
+    <header>
+      <h2 id="keyTitle">Connect Claude</h2>
+      <button class="close" data-close="keyScrim" aria-label="Close">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="mbody">
+      <div class="keystate" id="keyState"><span class="d"></span><span id="keyStateText">No key connected — running the authored baseline.</span></div>
+
+      <div class="field">
+        <label class="fl" for="keyInput">Anthropic API key</label>
+        <input class="inp" id="keyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+        <p class="hint">
+          Stored only in this browser's local storage and sent directly to <code>api.anthropic.com</code>.
+          It never touches a server of ours — this is a static page on GitHub Pages with no backend.
+          Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+        </p>
+      </div>
+
+      <div class="field">
+        <label class="fl" for="modelSelect">Model</label>
+        <select class="inp" id="modelSelect"></select>
+        <p class="hint" id="modelHint">Connect a key to load the models available on your account.</p>
+      </div>
+    </div>
+    <footer>
+      <button class="btn ghost" id="clearKey">Clear key</button>
+      <button class="btn" data-close="keyScrim">Cancel</button>
+      <button class="btn primary" id="saveKey">Save &amp; verify</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============ BRIEF MODAL ============ -->
+<div class="scrim" id="briefScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="briefTitle">
+    <header>
+      <h2 id="briefTitle">Design brief</h2>
+      <button class="close" data-close="briefScrim" aria-label="Close">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="mbody">
+      <div class="field">
+        <label class="fl" for="briefTitleInput">Title</label>
+        <input class="inp" id="briefTitleInput" placeholder="Currency Converter Mobile App">
+      </div>
+      <div class="field">
+        <label class="fl" for="briefText">Brief</label>
+        <textarea class="inp" id="briefText" spellcheck="false"></textarea>
+        <p class="hint">
+          The agent chains this through all seven stages. With a key connected it will genuinely
+          re-reason about a different brief; without one it replays the researched baseline for the
+          currency-converter assignment.
+        </p>
+        <div class="presets">
+          <button class="preset" data-preset="currency">Currency converter</button>
+          <button class="preset" data-preset="expense">Expense splitter</button>
+          <button class="preset" data-preset="transit">Transit ticketing</button>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <button class="btn" data-close="briefScrim">Cancel</button>
+      <button class="btn primary" id="saveBrief">Save brief</button>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================================
+   BRIEF AGENT — an autonomous UX design agent
+   Single-file, no build step, no backend. Runs a design brief end-to-end.
+   ========================================================================== */
+"use strict";
+
+/* ---------- tiny helpers ---------- */
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+/* localStorage that never throws (private mode, embedded webviews, etc.) */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("bragent." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("bragent." + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k)    { try { localStorage.removeItem("bragent." + k); } catch (e) {} }
+};
+
+let toastTimer;
+function toast(msg, isErr) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast on" + (isErr ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = "toast"; }, 3400);
+}
+
+/* ==========================================================================
+   BRIEFS
+   ========================================================================== */
+const BRIEFS = {
+  currency: {
+    title: "Currency Converter Mobile App",
+    text:
+`Design assignment: Currency Converter Mobile App
+
+Your task is to design a currency converter app (mobile or web) that provides users with a seamless and intuitive experience for converting currencies. The goal is to create a user-friendly interface that simplifies currency conversion tasks and enhances the overall usability and appeal of the app.
+
+Instructions
+1. Approach the project by considering:
+   a. Required research to understand user needs
+   b. Target audience
+   c. Key features and functions
+   d. Relevant user persona(s)`
+  },
+  expense: {
+    title: "Group Expense Splitter",
+    text:
+`Design assignment: Group Expense Splitter
+
+Design a mobile app that lets groups of friends, housemates or travel companions track shared expenses and settle up with the least possible friction.
+
+Instructions
+1. Approach the project by considering:
+   a. Required research to understand user needs
+   b. Target audience
+   c. Key features and functions
+   d. Relevant user persona(s)`
+  },
+  transit: {
+    title: "Urban Transit Ticketing",
+    text:
+`Design assignment: Urban Transit Ticketing
+
+Design a mobile app for buying and using public transport tickets across bus, metro and suburban rail in a large city, including for occasional and first-time riders.
+
+Instructions
+1. Approach the project by considering:
+   a. Required research to understand user needs
+   b. Target audience
+   c. Key features and functions
+   d. Relevant user persona(s)`
+  }
+};
+
+/* ==========================================================================
+   APP STATE
+   ========================================================================== */
+const state = {
+  key:    store.get("key", ""),
+  model:  store.get("model", ""),
+  brief:  store.get("brief", null) || { ...BRIEFS.currency },
+  results: {},          // stageId -> data object
+  sources: {},          // stageId -> 'baseline' | 'claude'
+  running: false,
+  aborted: false,
+  models: []
+};
+
+/* ==========================================================================
+   CURRENCY REFERENCE DATA (used by the generated prototype)
+   ========================================================================== */
+const CURRENCIES = [
+  ["USD","US Dollar","🇺🇸","$"],       ["EUR","Euro","🇪🇺","€"],
+  ["GBP","British Pound","🇬🇧","£"],   ["INR","Indian Rupee","🇮🇳","₹"],
+  ["JPY","Japanese Yen","🇯🇵","¥"],    ["AUD","Australian Dollar","🇦🇺","A$"],
+  ["CAD","Canadian Dollar","🇨🇦","C$"],["CHF","Swiss Franc","🇨🇭","Fr"],
+  ["CNY","Chinese Yuan","🇨🇳","¥"],    ["SGD","Singapore Dollar","🇸🇬","S$"],
+  ["AED","UAE Dirham","🇦🇪","د.إ"],    ["SAR","Saudi Riyal","🇸🇦","﷼"],
+  ["NZD","New Zealand Dollar","🇳🇿","NZ$"],["ZAR","South African Rand","🇿🇦","R"],
+  ["BRL","Brazilian Real","🇧🇷","R$"], ["MXN","Mexican Peso","🇲🇽","$"],
+  ["THB","Thai Baht","🇹🇭","฿"],       ["MYR","Malaysian Ringgit","🇲🇾","RM"],
+  ["IDR","Indonesian Rupiah","🇮🇩","Rp"],["PHP","Philippine Peso","🇵🇭","₱"],
+  ["VND","Vietnamese Dong","🇻🇳","₫"], ["KRW","South Korean Won","🇰🇷","₩"],
+  ["HKD","Hong Kong Dollar","🇭🇰","HK$"],["SEK","Swedish Krona","🇸🇪","kr"],
+  ["NOK","Norwegian Krone","🇳🇴","kr"],["DKK","Danish Krone","🇩🇰","kr"],
+  ["PLN","Polish Zloty","🇵🇱","zł"],   ["TRY","Turkish Lira","🇹🇷","₺"],
+  ["NGN","Nigerian Naira","🇳🇬","₦"],  ["KES","Kenyan Shilling","🇰🇪","KSh"],
+  ["EGP","Egyptian Pound","🇪🇬","E£"], ["ILS","Israeli Shekel","🇮🇱","₪"],
+  ["CZK","Czech Koruna","🇨🇿","Kč"],   ["HUF","Hungarian Forint","🇭🇺","Ft"],
+  ["RON","Romanian Leu","🇷🇴","lei"],  ["CLP","Chilean Peso","🇨🇱","$"],
+  ["COP","Colombian Peso","🇨🇴","$"],  ["PKR","Pakistani Rupee","🇵🇰","₨"],
+  ["BDT","Bangladeshi Taka","🇧🇩","৳"],["LKR","Sri Lankan Rupee","🇱🇰","Rs"],
+  ["NPR","Nepalese Rupee","🇳🇵","₨"],  ["QAR","Qatari Riyal","🇶🇦","﷼"],
+  ["KWD","Kuwaiti Dinar","🇰🇼","د.ك"], ["TWD","Taiwan Dollar","🇹🇼","NT$"],
+  ["GHS","Ghanaian Cedi","🇬🇭","₵"],   ["MAD","Moroccan Dirham","🇲🇦","د.م."],
+  ["UAH","Ukrainian Hryvnia","🇺🇦","₴"],["VES","Venezuelan Bolívar","🇻🇪","Bs"]
+].map(([code, name, flag, sym]) => ({ code, name, flag, sym }));
+
+const CUR = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
+
+/* Indicative offline snapshot, base USD. Only ever used when every live
+   endpoint fails — the UI labels it explicitly so nobody mistakes it for live. */
+const OFFLINE_RATES = {
+  USD:1, EUR:0.915, GBP:0.782, INR:87.6, JPY:151.2, AUD:1.52, CAD:1.37, CHF:0.885,
+  CNY:7.18, SGD:1.34, AED:3.673, SAR:3.75, NZD:1.66, ZAR:18.4, BRL:5.42, MXN:18.1,
+  THB:34.6, MYR:4.45, IDR:16250, PHP:57.4, VND:25400, KRW:1345, HKD:7.81, SEK:10.6,
+  NOK:10.8, DKK:6.82, PLN:3.95, TRY:34.8, NGN:1560, KES:129, EGP:48.5, ILS:3.68,
+  CZK:23.1, HUF:358, RON:4.56, CLP:945, COP:4100, PKR:278, BDT:118, LKR:295,
+  NPR:140, QAR:3.64, KWD:0.307, TWD:32.2, GHS:15.6, MAD:9.9, UAH:41.2, VES:40.1
+};
+
+/* Typical all-in cost of moving money, as a % worse than the mid-market rate.
+   Anchored on World Bank Remittance Prices Worldwide (global average 6.36% of
+   amount sent, Q3 2025) and published card-scheme / bureau markups. */
+const COST_MODEL = [
+  { id:"mid",    name:"Mid-market rate",      note:"The real rate — what you see on Google",  pct:0,    tone:"best"  },
+  { id:"digital",name:"Digital transfer app", note:"Transparent fee, mid-market rate",        pct:0.65, tone:"best"  },
+  { id:"card",   name:"Card abroad",          note:"Typical scheme + issuer FX markup",       pct:2.9,  tone:"mid"   },
+  { id:"bank",   name:"Bank transfer",        note:"Markup buried in the rate, plus fees",    pct:4.7,  tone:"mid"   },
+  { id:"bureau", name:"Airport bureau",       note:"Convenience priced at its worst",         pct:9.4,  tone:"worst" }
+];
+
+/* ==========================================================================
+   LIVE RATES — tries several key-less endpoints, falls back to the snapshot
+   ========================================================================== */
+const fx = { base:"USD", rates:{ ...OFFLINE_RATES }, stamp:null, live:false };
+let rateToken = 0;
+
+/* Never awaited by the UI — the interface repaints instantly from whatever it
+   already has, and repaints again if and when fresher rates land. */
+async function loadRates(base) {
+  base = base || "USD";
+  const token = ++rateToken;
+  const endpoints = [
+    { url:`https://api.frankfurter.dev/v1/latest?base=${base}`, pick:j => j && j.rates && { rates:j.rates, date:j.date } },
+    { url:`https://open.er-api.com/v6/latest/${base}`,          pick:j => j && j.rates && { rates:j.rates, date:j.time_last_update_utc } },
+    { url:`https://api.exchangerate-api.com/v4/latest/${base}`, pick:j => j && j.rates && { rates:j.rates, date:j.date } }
+  ];
+  for (const ep of endpoints) {
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 6000);
+      const res = await fetch(ep.url, { signal: ctl.signal });
+      clearTimeout(t);
+      if (!res.ok) continue;
+      const got = ep.pick(await res.json());
+      if (!got) continue;
+      if (token !== rateToken) return fx;          // a newer request has superseded this one
+      fx.base  = base;
+      fx.rates = { ...OFFLINE_RATES, ...got.rates, [base]: 1 };
+      fx.stamp = got.date ? new Date(got.date) : new Date();
+      fx.live  = true;
+      return fx;
+    } catch (e) { /* try the next endpoint */ }
+  }
+  if (token !== rateToken) return fx;
+  fx.base = "USD"; fx.rates = { ...OFFLINE_RATES }; fx.live = false; fx.stamp = null;
+  return fx;
+}
+
+function rateOf(from, to) {
+  const r = fx.rates, b = fx.base;
+  const f = from === b ? 1 : r[from], t = to === b ? 1 : r[to];
+  if (!f || !t) return null;
+  return t / f;
+}
+
+function fmtMoney(n, code) {
+  if (!isFinite(n)) return "—";
+  const zeroDec = ["JPY","KRW","VND","IDR","CLP","COP","HUF"].includes(code);
+  const d = zeroDec ? 0 : (Math.abs(n) >= 1000 ? 2 : Math.abs(n) >= 1 ? 2 : 4);
+  return n.toLocaleString(undefined, { minimumFractionDigits:d, maximumFractionDigits:d });
+}
+/* The editable amount field: whole numbers read as people type them. */
+function fmtField(n, code) {
+  if (!isFinite(n)) return "";
+  if (Math.abs(n % 1) < 1e-9) return Math.round(n).toLocaleString();
+  return fmtMoney(n, code);
+}
+/* Big numbers must not overflow the field — step the type size down instead. */
+function amtSize(s) {
+  const L = String(s).length;
+  return L > 13 ? 18 : L > 11 ? 21 : L > 9 ? 24 : 27;
+}
+function fmtRate(n) {
+  if (!isFinite(n)) return "—";
+  return n.toLocaleString(undefined, { minimumFractionDigits: n < 1 ? 4 : 2, maximumFractionDigits: n < 1 ? 4 : 4 });
+}
+function ageText(d) {
+  if (!d) return "indicative snapshot";
+  const m = Math.round((Date.now() - d.getTime()) / 60000);
+  if (m < 2) return "updated just now";
+  if (m < 60) return `updated ${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `updated ${h} h ago`;
+  return `updated ${Math.round(h / 24)} d ago`;
+}
+/* ==========================================================================
+   THE PIPELINE
+   Each stage: a tool schema Claude must fill, a prompt, and an authored
+   baseline built from desk research so the agent runs with no key at all.
+   ========================================================================== */
+const S = (props, req) => ({ type:"object", properties:props, required:req });
+const str = d => ({ type:"string", description:d });
+const arr = (items, d) => ({ type:"array", items, description:d });
+const num = d => ({ type:"number", description:d });
+
+const STAGES = [
+{
+  id:"intake", num:"01", name:"Brief intake", verb:"Parsing the brief",
+  meta:"objectives · constraints · unknowns",
+  think:["Reading the assignment", "Separating stated goals from implied ones", "Flagging what the brief leaves open"],
+  tool:{
+    name:"emit_intake",
+    description:"Structured reading of the design brief.",
+    input_schema:S({
+      objective: str("One sentence: what this product must achieve, in outcome terms not feature terms."),
+      scope: str("Platform and boundary decision, with a reason."),
+      deliverables: arr(str(), "What the submission must contain."),
+      successMetrics: arr(S({ metric:str(), target:str() }, ["metric","target"]), "3-4 measurable success criteria."),
+      constraints: arr(str(), "Real constraints this design has to respect."),
+      assumptions: arr(str(), "Assumptions being made explicit."),
+      openQuestions: arr(str(), "What the brief does not say and research must answer.")
+    }, ["objective","scope","deliverables","successMetrics","constraints","assumptions","openQuestions"])
+  },
+  baseline:{
+    objective:"Let anyone answer “what is this actually worth to me?” in under five seconds, and trust the answer enough to act on it.",
+    scope:"Mobile-first native app, responsive web as the secondary surface. Conversion happens standing up — at a counter, in a taxi, on a checkout page — so the phone is the primary context and everything else follows it.",
+    deliverables:["Research approach and questions","Target audience definition with sizing","2–3 evidence-led personas","Prioritised feature set with rationale","Information architecture and core user flow","Interactive high-fidelity prototype of the primary screen"],
+    successMetrics:[
+      { metric:"Time to first conversion, cold start", target:"< 5 s, no taps beyond typing the amount" },
+      { metric:"Task success under poor connectivity", target:"100% — last-known rates always available and dated" },
+      { metric:"Rate-trust score (post-task survey)", target:"≥ 4.2 / 5 on “I know what I'd actually receive”" },
+      { metric:"D30 retention for the travel segment", target:"≥ 28%, i.e. the app survives past one trip" }
+    ],
+    constraints:[
+      "Rates are reference data, not an offer — the app must never imply the user will get the mid-market rate.",
+      "Connectivity abroad is unreliable and expensive; every core task must work offline.",
+      "One-handed use while walking or standing at a counter.",
+      "WCAG 2.2 AA: 24×24 px minimum targets (44×44 for primary actions), 4.5:1 text contrast, full dynamic-type support."
+    ],
+    assumptions:[
+      "The app is a converter and rate-intelligence tool, not a money-transmission product — no licences, no custody.",
+      "Free to use; monetisation via affiliate transfer referrals rather than interstitial ads, which are fatal to a five-second task.",
+      "Users arrive with a currency pair in mind roughly 85% of the time."
+    ],
+    openQuestions:[
+      "Where does conversion physically happen, and how often is it a repeat of the same pair?",
+      "What is the real question behind “what's the rate?” — is it price fairness, budget tracking, or a transfer decision?",
+      "How do people currently sanity-check that they aren't being overcharged?",
+      "Do users understand the gap between the rate they look up and the rate they receive?"
+    ]
+  }
+},
+{
+  id:"research", num:"02", name:"Research plan", verb:"Designing the research",
+  meta:"methods · questions · sample",
+  think:["Choosing methods that fit a 5-second task","Sizing samples for a 3-week window","Writing questions that don't lead"],
+  tool:{
+    name:"emit_research",
+    description:"A practical, time-boxed research plan.",
+    input_schema:S({
+      rationale: str("Why this mix of methods suits this specific problem."),
+      questions: arr(str(), "5-6 research questions, non-leading."),
+      methods: arr(S({ name:str(), why:str(), sample:str(), duration:str() }, ["name","why","sample","duration"]), "4-6 methods."),
+      timeline: str("How it fits into a realistic window."),
+      outputs: arr(str(), "What research hands to design.")
+    }, ["rationale","questions","methods","timeline","outputs"])
+  },
+  baseline:{
+    rationale:"Currency conversion is a micro-task inside a much larger, more emotional situation — a trip, an invoice, money sent home. Interviews alone will over-report the rational parts, so the plan pairs stated-preference methods with in-the-moment capture and a hard behavioural benchmark.",
+    questions:[
+      "Where are people physically when they convert, and what has just happened?",
+      "What decision is riding on the number — and what happens if it's wrong?",
+      "How do people currently check that a rate is fair?",
+      "What do people believe the gap is between a looked-up rate and the money they receive?",
+      "Which parts of existing converters get abandoned, and at what step?",
+      "What does conversion look like with no signal, in a foreign country, on 4% battery?"
+    ],
+    methods:[
+      { name:"Competitive teardown + heuristic pass", why:"Establishes the pattern language and finds where every incumbent leaves the same gap.", sample:"8 apps (XE, Wise, Revolut, Currency Converter Plus, OANDA, Google, and 2 top free Android converters)", duration:"3 days" },
+      { name:"App-store review mining", why:"Two thousand unprompted complaints are cheaper and more honest than twenty recruited opinions.", sample:"~2,000 reviews, 1–3★, thematically coded", duration:"2 days" },
+      { name:"Diary study", why:"Captures the trigger moment, which nobody recalls accurately a week later.", sample:"12 participants — 6 travellers, 4 cross-border freelancers, 2 regular remitters, over 2 weeks", duration:"2 weeks (parallel)" },
+      { name:"Depth interviews", why:"Gets at the trust question: what they think they'll receive versus what they do.", sample:"8 × 45 min, drawn from the diary cohort", duration:"1 week" },
+      { name:"Benchmark usability test", why:"Gives a number to beat, not an opinion to argue with.", sample:"n=10, current-tool baseline; task: convert under time pressure with degraded network", duration:"4 days" },
+      { name:"Segment sizing survey", why:"Turns qualitative segments into something you can prioritise with.", sample:"n=300, screened for cross-border money activity in the last 6 months", duration:"1 week (parallel)" }
+    ],
+    timeline:"Three weeks end to end. Desk research and review mining run in week 1 while the diary study recruits; interviews and the benchmark land in weeks 2–3; synthesis in the last three days.",
+    outputs:["A ranked pain inventory with frequency and severity","Segment sizes with a defensible primary","2–3 personas with jobs-to-be-done","A baseline usability score to design against","A trust model: what people believe about rates versus what is true"]
+  }
+},
+{
+  id:"market", num:"03", name:"Competitive teardown", verb:"Tearing down the market",
+  meta:"8 apps · patterns · the gap",
+  think:["Auditing incumbents feature by feature","Coding the recurring complaints","Looking for the gap nobody has taken"],
+  tool:{
+    name:"emit_market",
+    description:"Competitive landscape and the resulting design opportunity.",
+    input_schema:S({
+      summary: str("Two sentences on the state of the market."),
+      apps: arr(S({ name:str(), positioning:str(), strengths:str(), weakness:str() }, ["name","positioning","strengths","weakness"]), "6-8 competitors."),
+      patterns: arr(str(), "Conventions worth keeping."),
+      gap: str("The unclaimed opportunity, stated as a design bet.")
+    }, ["summary","apps","patterns","gap"])
+  },
+  baseline:{
+    summary:"The category is mature and undifferentiated: everyone shows a rate, most support offline, and the free tier is usually paid for with ads that interrupt a five-second task. The interesting finding is what almost nobody does — connect the reference rate to the money the user will actually receive.",
+    apps:[
+      { name:"XE Currency", positioning:"The trusted default", strengths:"130+ currencies, rate alerts, charts going back a decade, cached offline rates", weakness:"Interface has accreted; more surface than a five-second task needs, and its own transfers aren't always cheapest" },
+      { name:"Wise", positioning:"Honest pricing as the product", strengths:"Mid-market rate with the fee shown separately and up front; genuinely clear comparison tooling", weakness:"It's an account, not a converter — full features need signup, so it loses the casual lookup" },
+      { name:"Currency Converter Plus", positioning:"The good-looking one", strengths:"170+ currencies plus metals and crypto, fast, strong offline mode, multi-currency at a glance", weakness:"Ads in the free tier land squarely on top of the primary task" },
+      { name:"Revolut", positioning:"Spend abroad, don't convert", strengths:"Hold and spend multiple currencies at near-interbank rates, budgeting built in", weakness:"Best rates are tier-gated and it requires a full financial account" },
+      { name:"OANDA", positioning:"Professional-grade reference", strengths:"Filterable historical data traders actually trust", weakness:"Far more complexity than a traveller needs" },
+      { name:"Google search converter", positioning:"Zero friction", strengths:"Instant, free, no install, no login — the real competitor", weakness:"No offline, no history, no sense of what you'd actually receive" },
+      { name:"Easy Currency Converter", positioning:"Broadest coverage, Android", strengths:"200+ currencies, offline, dark theme, frequent updates", weakness:"Ads, and few features beyond the conversion itself" },
+      { name:"My Currency Converter", positioning:"Elegant, iOS-only", strengths:"Convert-as-you-type, offline, rates to three decimals", weakness:"iOS only, ad-supported, no transfer context" }
+    ],
+    patterns:[
+      "Convert-as-you-type with no submit button — a submit button in a converter is a usability bug.",
+      "A persistent, swappable currency pair that survives app restarts.",
+      "Offline with cached rates, which is table stakes rather than a feature.",
+      "Search by country name and symbol, not only by ISO code — people search “yen”, not “JPY”.",
+      "Recents and favourites surfaced above the full list."
+    ],
+    gap:"Every incumbent answers “what is the rate?”. Almost none answers “what will I actually end up with?” — the question the user is really asking. The design bet is to make the gap between the mid-market rate and the money that lands the centrepiece of the product, not a footnote."
+  }
+},
+{
+  id:"audience", num:"04", name:"Audience & sizing", verb:"Sizing the audience",
+  meta:"segments · priority · market context",
+  think:["Segmenting by trigger, not demographics","Attaching numbers to each segment","Deciding who not to design for"],
+  tool:{
+    name:"emit_audience",
+    description:"Target audience, segmented and prioritised.",
+    input_schema:S({
+      summary: str("Who this is for, in two sentences."),
+      segments: arr(S({ name:str(), share:num("Rough share of the addressable base, 0-100"), description:str(), need:str(), priority:str("primary | secondary | tertiary") }, ["name","share","description","need","priority"]), "4-5 segments."),
+      context: arr(S({ stat:str(), label:str(), source:str() }, ["stat","label","source"]), "3-4 market figures with sources."),
+      primary: str("The primary target and why."),
+      deprioritised: str("Who is explicitly not the target, and why that is a good thing.")
+    }, ["summary","segments","context","primary","deprioritised"])
+  },
+  baseline:{
+    summary:"The audience is not “people who travel” — it is people for whom a currency number carries a consequence. That splits cleanly by trigger: a trip, an invoice, a transfer home, or a checkout page.",
+    segments:[
+      { name:"Leisure travellers", share:38, description:"One to three trips a year, often to a currency they've never used. Highest anxiety, lowest frequency, least practice at the mental maths.", need:"Instant sanity-check on whether a price is reasonable, working with hotel wifi or none at all.", priority:"primary" },
+      { name:"Cross-border freelancers & remote workers", share:22, description:"Invoice in USD/EUR/GBP, get paid into a local-currency account. Convert several times a month and care about timing.", need:"Know what will actually land after fees, and whether today is a good day to withdraw.", priority:"primary" },
+      { name:"Migrant remitters", share:19, description:"Send money home on a monthly rhythm. Small percentage differences compound into real money over a year.", need:"Total landed cost, corridor comparison, and an alert when the rate improves.", priority:"secondary" },
+      { name:"Cross-border online shoppers", share:15, description:"Buying from foreign storefronts; converting a checkout total to decide whether to proceed.", need:"Fast conversion of a specific number, plus awareness of the card markup that will be added.", priority:"secondary" },
+      { name:"Rate watchers & traders", share:6, description:"Track pairs habitually, want charts and precision.", need:"Historical depth, alerts, decimal precision.", priority:"tertiary" }
+    ],
+    context:[
+      { stat:"$194.6T", label:"Global cross-border payment flows in 2024, projected to reach $320T by 2032", source:"FXC Intelligence, Jan 2025" },
+      { stat:"6.36%", label:"Global average cost of sending a remittance — the gap this product makes visible", source:"World Bank RPW, Q3 2025" },
+      { stat:"3%", label:"G20 target ceiling for remittance cost by 2030, against today's 6.36%", source:"G20 / UN SDG 10.c" },
+      { stat:"$135.5B", label:"Remittance inflows to India in FY 2024-25, up 14% year on year", source:"Reserve Bank of India" }
+    ],
+    primary:"Leisure travellers and cross-border freelancers together account for roughly 60% of the addressable base and sit at opposite ends of the frequency curve — one converts rarely under pressure, the other often and deliberately. Designing for both forces an interface that is instant on first open and rewarding on the hundredth.",
+    deprioritised:"Traders are explicitly not the target. Designing for them is how converters end up cluttered: candlestick charts, decimal toggles and indicator overlays all serve 6% of users while slowing down the other 94%. Depth is available one tap down, never on the first screen."
+  }
+},
+{
+  id:"personas", num:"05", name:"Personas", verb:"Building personas",
+  meta:"3 personas · jobs-to-be-done",
+  think:["Grounding each persona in a trigger","Writing jobs-to-be-done, not biographies","Naming the anti-persona"],
+  tool:{
+    name:"emit_personas",
+    description:"Evidence-led personas with jobs-to-be-done.",
+    input_schema:S({
+      personas: arr(S({
+        name:str(), initials:str("2 letters"), age:num(), role:str(), location:str(),
+        quote:str("First person, in their voice."),
+        jtbd:str("When ___, I want to ___, so I can ___."),
+        goals:arr(str()), frustrations:arr(str()), behaviours:arr(str()),
+        techComfort:num("1-5"), frequency:num("1-5"), priceSensitivity:num("1-5")
+      }, ["name","initials","age","role","location","quote","jtbd","goals","frustrations","behaviours","techComfort","frequency","priceSensitivity"]), "Exactly 3 personas."),
+      antiPersona: S({ name:str(), why:str() }, ["name","why"])
+    }, ["personas","antiPersona"])
+  },
+  baseline:{
+    personas:[
+      {
+        name:"Meera Raghavan", initials:"MR", age:29, role:"Freelance UX designer", location:"Bengaluru, India",
+        quote:"The client says they're paying me $2,400. My bank says something else entirely, and nobody will tell me why.",
+        jtbd:"When a client pays me in dollars, I want to know what will actually land in my account, so I can quote and plan without a nasty surprise.",
+        goals:["Quote in USD with confidence about the rupee outcome","Time withdrawals to avoid losing a week's work to a bad rate","Reconcile what arrived against what was promised"],
+        frustrations:["The rate she looks up is never the rate she receives","Fees are buried inside the rate rather than shown as a line","No single view of what a $2,400 invoice is really worth today"],
+        behaviours:["Checks USD/INR two or three times a week, more near invoice dates","Screenshots rates to compare later","Keeps a spreadsheet of what each payment actually converted at"],
+        techComfort:5, frequency:4, priceSensitivity:4
+      },
+      {
+        name:"Tom Whitfield", initials:"TW", age:41, role:"Operations manager, first trip to Japan", location:"Manchester, UK",
+        quote:"I'm stood in a shop holding a jumper that costs ¥8,400 and I have absolutely no idea if that's cheap or a rip-off.",
+        jtbd:"When I'm at a counter abroad, I want to know instantly whether this price is reasonable, so I don't overpay or freeze up deciding.",
+        goals:["Convert in seconds without thinking about the app","Not look lost while doing it","Come home without a card statement full of surprises"],
+        frustrations:["Mental arithmetic under social pressure","Ads firing on top of the number he's trying to read","Hotel wifi drops and the app has nothing cached"],
+        behaviours:["Opens the app, converts once, closes it — dozens of times a trip","Uses round-number anchors (“1,000 yen is about £5”)","Never changes settings; whatever opens first is what he uses"],
+        techComfort:3, frequency:5, priceSensitivity:3
+      },
+      {
+        name:"Daniel Okonkwo", initials:"DO", age:36, role:"Care worker, sends money home monthly", location:"London, UK → Lagos, Nigeria",
+        quote:"Every provider says “no fees”. Then the naira that arrives is less than the last time, and the rate they showed me hasn't moved.",
+        jtbd:"When I send money home, I want to send on the best day at the lowest total cost, so more of it reaches my family.",
+        goals:["Maximise what lands in Lagos, not what leaves London","Know when the corridor is unusually good","Compare providers on total cost, not headline fee"],
+        frustrations:["“Zero fee” claims that hide the margin in the rate","Having to check four apps to compare one transfer","No warning when the rate has moved against him"],
+        behaviours:["Checks GBP/NGN most evenings in the week before sending","Sends on a fixed monthly rhythm but flexes a few days for a better rate","Trusts word of mouth in his community over app marketing"],
+        techComfort:3, frequency:5, priceSensitivity:5
+      }
+    ],
+    antiPersona:{
+      name:"The day trader",
+      why:"Wants candlesticks, indicators, tick data and sub-pip precision. Every one of those requests, if granted, makes the first screen slower and more frightening for Tom — who is the actual volume. Serve depth one level down; never on open."
+    }
+  }
+},
+{
+  id:"features", num:"06", name:"Feature definition", verb:"Prioritising features",
+  meta:"MoSCoW · impact vs effort",
+  think:["Mapping features back to personas","Scoring impact against effort","Cutting the ones that only feel productive"],
+  tool:{
+    name:"emit_features",
+    description:"Prioritised feature set with rationale.",
+    input_schema:S({
+      summary: str("The shape of the product in two sentences."),
+      principles: arr(str(), "3-4 design principles that settle future arguments."),
+      features: arr(S({
+        name:str(), moscow:str("must | should | could | wont"), description:str(),
+        rationale:str("Why, tied to a persona or a research finding."),
+        persona:str("Who it serves most"), impact:num("1-5"), effort:num("1-5")
+      }, ["name","moscow","description","rationale","persona","impact","effort"]), "10-13 features across all four MoSCoW bands.")
+    }, ["summary","principles","features"])
+  },
+  baseline:{
+    summary:"A converter that opens straight into the answer, works with no signal, and — uniquely — shows the distance between the rate you look up and the money you actually get. Everything else is one level down.",
+    principles:[
+      "The answer before the interface. The first screen is the conversion, pre-filled with the last pair used.",
+      "Never show a rate without showing what it costs to use it.",
+      "Offline is a state, not an error — always show a number, always date it.",
+      "Depth is one tap down, never on the first screen."
+    ],
+    features:[
+      { name:"Convert-as-you-type", moscow:"must", description:"Live bidirectional conversion on every keystroke, no submit button, editable from either side.", rationale:"Tom's task is five seconds long; any confirmation step is pure tax.", persona:"Tom", impact:5, effort:1 },
+      { name:"Persistent pair with swap", moscow:"must", description:"Last-used pair restored on launch; single-tap swap with a direction animation.", rationale:"85% of sessions repeat the previous pair — restoring it removes the whole setup step.", persona:"All", impact:5, effort:1 },
+      { name:"“What you'll actually get”", moscow:"must", description:"Side-by-side comparison of mid-market, digital transfer, card abroad, bank and bureau — in the destination currency, with the loss in cash terms.", rationale:"The unclaimed gap in the entire category, and the one thing Meera and Daniel need most.", persona:"Meera, Daniel", impact:5, effort:3 },
+      { name:"Offline mode with rate age", moscow:"must", description:"Cached rates always available, stamped with how old they are and a clear indicator when stale.", rationale:"Conversion happens exactly where connectivity is worst; silence is worse than an old number.", persona:"Tom", impact:5, effort:2 },
+      { name:"Currency search by name & symbol", moscow:"must", description:"Search across ISO code, currency name, country and symbol, with recents pinned on top.", rationale:"People search “yen” and “Japan”, not “JPY”.", persona:"All", impact:4, effort:2 },
+      { name:"Accessible numeric entry", moscow:"must", description:"Large tap targets, dynamic type, VoiceOver labels that read the converted value as a sentence.", rationale:"WCAG 2.2 AA is the floor; one-handed use at a counter demands more than the floor.", persona:"All", impact:4, effort:2 },
+      { name:"Multi-currency watchlist", moscow:"should", description:"One amount converted into several currencies at once, reorderable.", rationale:"Multi-country trips and freelancers tracking more than one client currency.", persona:"Meera", impact:4, effort:2 },
+      { name:"Rate alerts", moscow:"should", description:"Notify when a pair crosses a target, or when it's unusually good against its 90-day range.", rationale:"Daniel flexes his send date by a few days; an alert is worth real money to him.", persona:"Daniel", impact:4, effort:3 },
+      { name:"30/90-day trend", moscow:"should", description:"A compact sparkline with a plain-language read: “better than 82% of the last 90 days.”", rationale:"Answers “is now a good time?” without turning the app into a trading terminal.", persona:"Meera, Daniel", impact:4, effort:3 },
+      { name:"Calculator-style input", moscow:"should", description:"Accept expressions — 25*3, 40+15 — directly in the amount field.", rationale:"Observed workaround: people leave the app to do arithmetic, then come back.", persona:"Tom", impact:3, effort:2 },
+      { name:"Tip & split for travellers", moscow:"could", description:"Split a converted bill and apply local tipping norms.", rationale:"High delight, narrow moment; adds a reason to keep the app after the trip.", persona:"Tom", impact:3, effort:2 },
+      { name:"Camera price capture", moscow:"could", description:"Point at a price tag or menu; convert numbers in place.", rationale:"Strong demo, real utility in markets — but OCR on printed prices is unreliable enough to hurt trust in v1.", persona:"Tom", impact:3, effort:5 },
+      { name:"In-app transfers", moscow:"wont", description:"Actually moving money.", rationale:"Licensing, custody and compliance turn a converter into a fintech. Refer out, take the affiliate revenue, keep the product honest.", persona:"—", impact:2, effort:5 },
+      { name:"Crypto & trading charts", moscow:"wont", description:"Candlesticks, indicators, tick data.", rationale:"Serves the anti-persona at the direct expense of the primary one.", persona:"—", impact:1, effort:4 }
+    ]
+  }
+},
+{
+  id:"proto", num:"07", name:"IA, flow & prototype", verb:"Building the prototype",
+  meta:"screen map · flow · live build",
+  think:["Mapping screens to the must-haves","Writing the cold-open flow","Compiling the interactive prototype"],
+  tool:{
+    name:"emit_prototype",
+    description:"Information architecture, core flow, and a spec that parameterises the live prototype.",
+    input_schema:S({
+      summary: str("The IA rationale in two sentences."),
+      screens: arr(S({ name:str(), purpose:str(), key:str("The one thing this screen must do well") }, ["name","purpose","key"]), "4-5 screens."),
+      flow: arr(S({ step:str("A short label"), title:str(), detail:str() }, ["step","title","detail"]), "4-5 steps of the primary flow."),
+      interactions: arr(S({ name:str(), detail:str(), why:str() }, ["name","detail","why"]), "4-5 signature interactions."),
+      spec: S({
+        appName:str("Short product name"), tagline:str("A few words"),
+        defaultFrom:str("ISO code"), defaultTo:str("ISO code"),
+        quickAmounts:arr(num(), "4 useful round amounts"),
+        insightTitle:str("Heading for the honest-rate card"),
+        insightSub:str("One line explaining it"),
+        watchlist:arr(str(), "3 ISO codes for the watchlist")
+      }, ["appName","tagline","defaultFrom","defaultTo","quickAmounts","insightTitle","insightSub","watchlist"])
+    }, ["summary","screens","flow","interactions","spec"])
+  },
+  baseline:{
+    summary:"Four screens, one of which does 90% of the work. The architecture is deliberately shallow — the home screen is the product, and everything else exists so the home screen can stay simple.",
+    screens:[
+      { name:"Convert (home)", purpose:"The whole product in one view: amount, pair, rate, and what you'd actually receive.", key:"Be useful within one second of a cold start, with no taps." },
+      { name:"Currency picker", purpose:"Bottom sheet with search across code, name, country and symbol; recents pinned.", key:"Find any of 180 currencies in under three seconds." },
+      { name:"Watchlist", purpose:"One amount against several currencies, with daily movement.", key:"Answer “how is everything doing?” at a glance." },
+      { name:"Rate detail", purpose:"Trend, 90-day range read in plain language, and alert setup for the pair.", key:"Answer “is now a good time?” without a trading UI." }
+    ],
+    flow:[
+      { step:"Cold open", title:"Straight into the answer", detail:"No splash, no onboarding, no login. The last pair and last amount are restored, so the first frame already shows a converted number." },
+      { step:"Enter", title:"Type the amount", detail:"Numeric keypad focused by default; conversion updates on every keystroke in both directions." },
+      { step:"Adjust", title:"Swap or change currency", detail:"Swap is one tap with a rotation that shows direction. Changing a currency opens the search sheet; recents make it a single tap." },
+      { step:"Understand", title:"See what you'd actually get", detail:"Below the fold by design: the same amount through five routes, with the loss shown in cash. This is the moment the app earns trust." },
+      { step:"Return", title:"Save or watch", detail:"Add the pair to the watchlist or set a target alert — the only reason to keep the app after the trip ends." }
+    ],
+    interactions:[
+      { name:"Directional swap", detail:"The swap control rotates 180° and the two rows cross-fade in opposite directions.", why:"Makes the direction change legible in peripheral vision — the most common source of conversion errors." },
+      { name:"Rate-age traffic light", detail:"A small dot next to the rate: green when fresh, amber past an hour, with the age spelled out in words.", why:"Turns offline from a failure state into an honest one." },
+      { name:"Loss made concrete", detail:"The comparison shows a cash amount lost, not a percentage — “₹2,140 less than mid-market”.", why:"Percentages are abstract; people act on the money." },
+      { name:"Range read in words", detail:"“Better than 82% of the last 90 days” instead of a chart the user has to interpret.", why:"Gives Daniel and Meera the timing answer without a trading interface." },
+      { name:"Sticky numeric focus", detail:"The keypad stays up through currency changes; the amount is never lost.", why:"One-handed use at a counter — every dismissal costs a second and a tap." }
+    ],
+    spec:{
+      appName:"Currenzy", tagline:"What you'll actually get",
+      defaultFrom:"USD", defaultTo:"INR",
+      quickAmounts:[100, 500, 1000, 2400],
+      insightTitle:"What you'll actually get",
+      insightSub:"The same amount, through five routes. The difference is the part nobody shows you.",
+      watchlist:["EUR","GBP","JPY"]
+    }
+  }
+}];
+
+const STAGE_BY_ID = Object.fromEntries(STAGES.map(s => [s.id, s]));
+/* ==========================================================================
+   RENDERERS — one per stage
+   ========================================================================== */
+const li  = xs => (xs || []).map(x => `<li>${esc(x)}</li>`).join("");
+const sec = t => `<h3 class="sec">${esc(t)}</h3>`;
+const AV  = ["#6EE7B7","#7DB4FF","#FBBF24","#C4B5FD","#F0ABFC"];
+
+const RENDER = {
+
+intake: d => `
+  <p class="muted" style="font-size:15px;line-height:1.6"><strong>${esc(d.objective)}</strong></p>
+  <div class="callout"><div class="ct">Scope decision</div><p>${esc(d.scope)}</p></div>
+  ${sec("Success metrics")}
+  <div class="grid2">${(d.successMetrics||[]).map(m => `
+    <div class="tile"><div class="k">${esc(m.metric)}</div><div class="v">${esc(m.target)}</div></div>`).join("")}
+  </div>
+  ${sec("Constraints")}<ul class="clean">${li(d.constraints)}</ul>
+  ${sec("Assumptions made explicit")}<ul class="clean">${li(d.assumptions)}</ul>
+  ${sec("What the brief doesn't say")}<ul class="clean num">${li(d.openQuestions)}</ul>
+  ${sec("Deliverables")}<ul class="clean">${li(d.deliverables)}</ul>`,
+
+research: d => `
+  <p>${esc(d.rationale)}</p>
+  ${sec("Research questions")}<ul class="clean num">${li(d.questions)}</ul>
+  ${sec("Methods")}
+  <div class="scroller"><table class="tbl">
+    <thead><tr><th style="width:24%">Method</th><th>Why this one</th><th style="width:22%">Sample</th><th style="width:13%">Time</th></tr></thead>
+    <tbody>${(d.methods||[]).map(m => `<tr>
+      <td><b>${esc(m.name)}</b></td><td>${esc(m.why)}</td>
+      <td class="muted">${esc(m.sample)}</td><td class="muted">${esc(m.duration)}</td></tr>`).join("")}
+    </tbody></table></div>
+  <div class="callout"><div class="ct">Timeline</div><p>${esc(d.timeline)}</p></div>
+  ${sec("What research hands to design")}<ul class="clean">${li(d.outputs)}</ul>`,
+
+market: d => `
+  <p>${esc(d.summary)}</p>
+  ${sec("Teardown")}
+  <div class="scroller"><table class="tbl">
+    <thead><tr><th style="width:17%">App</th><th style="width:19%">Positioning</th><th>Strength</th><th>Where it falls short</th></tr></thead>
+    <tbody>${(d.apps||[]).map(a => `<tr>
+      <td><b>${esc(a.name)}</b></td><td class="muted">${esc(a.positioning)}</td>
+      <td>${esc(a.strengths)}</td><td>${esc(a.weakness)}</td></tr>`).join("")}
+    </tbody></table></div>
+  ${sec("Conventions worth keeping")}<ul class="clean">${li(d.patterns)}</ul>
+  <div class="callout"><div class="ct">The gap — and the design bet</div><p>${esc(d.gap)}</p></div>`,
+
+audience: d => `
+  <p>${esc(d.summary)}</p>
+  ${sec("Market context")}
+  <div class="grid3">${(d.context||[]).map((c,i) => `
+    <div class="stat"><div class="n ${["mint","amber","blue","mint"][i%4]}">${esc(c.stat)}</div>
+    <div class="l">${esc(c.label)}</div><div class="s">${esc(c.source)}</div></div>`).join("")}
+  </div>
+  ${sec("Segments")}
+  <div class="bars wide" style="margin-bottom:16px">${(d.segments||[]).map(s => `
+    <div class="bar"><span class="bl" title="${esc(s.name)}">${esc(s.name)}</span>
+      <span class="bt"><i style="width:${clamp(Number(s.share)||0,0,100)}%"></i></span>
+      <span class="bv">${Math.round(Number(s.share)||0)}%</span></div>`).join("")}
+  </div>
+  <div class="scroller"><table class="tbl">
+    <thead><tr><th style="width:22%">Segment</th><th>Who they are</th><th style="width:26%">Core need</th><th style="width:12%">Priority</th></tr></thead>
+    <tbody>${(d.segments||[]).map(s => `<tr>
+      <td><b>${esc(s.name)}</b></td><td>${esc(s.description)}</td><td>${esc(s.need)}</td>
+      <td><span class="pill ${({primary:"must",secondary:"should",tertiary:"could"})[String(s.priority).toLowerCase()]||""}">${esc(s.priority)}</span></td></tr>`).join("")}
+    </tbody></table></div>
+  <div class="callout"><div class="ct">Primary target</div><p>${esc(d.primary)}</p></div>
+  ${sec("Explicitly not the target")}<p>${esc(d.deprioritised)}</p>`,
+
+personas: d => `
+  <div class="gridp">${(d.personas||[]).map((p,i) => `
+    <article class="persona">
+      <div class="ph">
+        <div class="av" style="background:${AV[i%AV.length]}">${esc(p.initials||String(p.name||"?").slice(0,2))}</div>
+        <div><div class="pn">${esc(p.name)}, ${esc(p.age)}</div>
+        <div class="pr">${esc(p.role)} · ${esc(p.location)}</div></div>
+      </div>
+      <div class="pb">
+        <blockquote class="quote">“${esc(p.quote)}”</blockquote>
+        <div><div class="pk">Job to be done</div><p style="margin:0;font-size:13px">${esc(p.jtbd)}</p></div>
+        <div><div class="pk">Goals</div><ul class="clean" style="font-size:12.5px">${li(p.goals)}</ul></div>
+        <div><div class="pk">Frustrations</div><ul class="clean" style="font-size:12.5px">${li(p.frustrations)}</ul></div>
+        <div><div class="pk">Behaviours</div><ul class="clean" style="font-size:12.5px">${li(p.behaviours)}</ul></div>
+        <div class="bars">
+          ${[["Tech comfort",p.techComfort],["Frequency",p.frequency],["Price sensitivity",p.priceSensitivity]].map(([l,v]) =>
+            `<div class="bar"><span class="bl" style="width:104px">${l}</span>
+             <span class="bt"><i style="width:${clamp((Number(v)||0)/5*100,0,100)}%"></i></span>
+             <span class="bv">${Number(v)||0}/5</span></div>`).join("")}
+        </div>
+      </div>
+    </article>`).join("")}
+  </div>
+  ${d.antiPersona ? `<div class="callout" style="border-color:rgba(248,113,113,.28);background:var(--red-bg)">
+    <div class="ct" style="color:var(--red)">Anti-persona — ${esc(d.antiPersona.name)}</div>
+    <p style="color:#E9CFCF">${esc(d.antiPersona.why)}</p></div>` : ""}`,
+
+features: d => {
+  const bands = [["must","Must have"],["should","Should have"],["could","Could have"],["wont","Won't — this release"]];
+  const fs = d.features || [];
+  return `
+  <p>${esc(d.summary)}</p>
+  ${sec("Design principles")}<ul class="clean num">${li(d.principles)}</ul>
+  ${bands.map(([k,label]) => {
+    const rows = fs.filter(f => String(f.moscow||"").toLowerCase().replace("'","").startsWith(k.slice(0,4)));
+    if (!rows.length) return "";
+    return `${sec(label)}<div class="scroller"><table class="tbl">
+      <thead><tr><th style="width:22%">Feature</th><th>What &amp; why</th><th style="width:14%">Serves</th><th style="width:15%">Impact / effort</th></tr></thead>
+      <tbody>${rows.map(f => `<tr>
+        <td><b>${esc(f.name)}</b><br><span class="pill ${k}" style="margin-top:5px">${esc(String(f.moscow).toUpperCase())}</span></td>
+        <td>${esc(f.description)}<br><span class="muted" style="font-size:12px">${esc(f.rationale)}</span></td>
+        <td class="muted">${esc(f.persona)}</td>
+        <td><div class="bars">
+          <div class="bar"><span class="bl" style="width:38px;font-size:10.5px">Impact</span><span class="bt"><i style="width:${clamp((Number(f.impact)||0)/5*100,0,100)}%"></i></span></div>
+          <div class="bar"><span class="bl" style="width:38px;font-size:10.5px">Effort</span><span class="bt"><i style="width:${clamp((Number(f.effort)||0)/5*100,0,100)}%;background:linear-gradient(90deg,#FBBF24,#F59E0B)"></i></span></div>
+        </div></td></tr>`).join("")}
+      </tbody></table></div>`;
+  }).join("")}`;
+},
+
+proto: d => `
+  <p>${esc(d.summary)}</p>
+  ${sec("Screen map")}
+  <div class="grid2">${(d.screens||[]).map((s,i) => `
+    <div class="tile"><div class="k">${String(i+1).padStart(2,"0")} · ${esc(s.name)}</div>
+    <div class="v">${esc(s.purpose)}</div>
+    <div class="v" style="color:var(--mint);font-size:12.5px;margin-top:7px">→ ${esc(s.key)}</div></div>`).join("")}
+  </div>
+  ${sec("Primary flow")}
+  <div class="flowmap">${(d.flow||[]).map(f => `
+    <div class="fnode"><div class="fn">${esc(f.step)}</div>
+    <div class="ft">${esc(f.title)}</div><div class="fd">${esc(f.detail)}</div></div>`).join("")}
+  </div>
+  ${sec("Live prototype")}
+  <div class="protowrap">
+    <div class="phone"><div class="screen" id="protoScreen"></div></div>
+    <div class="protonotes">
+      <div class="pnote" style="border-color:var(--mint-line);background:var(--mint-bg)">
+        <div class="pt"><span class="i">▸</span>It actually works</div>
+        <p>Type an amount, swap the pair, search 48 currencies, tap a watchlist row. Rates are fetched live from a
+        key-less endpoint at runtime; if the network refuses, it falls back to a dated snapshot and says so — which is
+        the offline behaviour the research called for.</p>
+      </div>
+      ${(d.interactions||[]).map((x,i) => `
+        <div class="pnote"><div class="pt"><span class="i">${String(i+1).padStart(2,"0")}</span>${esc(x.name)}</div>
+        <p>${esc(x.detail)}</p><div class="who">${esc(x.why)}</div></div>`).join("")}
+    </div>
+  </div>`
+};
+
+/* ==========================================================================
+   TRANSCRIPT + STAGE RAIL
+   ========================================================================== */
+function buildRail() {
+  const list = $("#stageList");
+  list.innerHTML = "";
+  STAGES.forEach(s => {
+    const b = el("button", "stage", `
+      <span class="s-ico" data-ico>${s.num}</span>
+      <span class="s-body"><span class="s-name">${esc(s.name)}</span><span class="s-meta" data-meta>${esc(s.meta)}</span></span>`);
+    b.id = "rail-" + s.id;
+    b.onclick = () => {
+      const card = $("#card-" + s.id);
+      if (card) card.scrollIntoView({ block:"start" });
+      else toast("That stage hasn't run yet.");
+    };
+    list.appendChild(b);
+  });
+  $("#pipePreview").innerHTML = STAGES.map(s =>
+    `<div class="pp"><div class="n">${s.num}</div><div class="t">${esc(s.name)}</div></div>`).join("");
+}
+
+function railState(id, cls, meta) {
+  const b = $("#rail-" + id); if (!b) return;
+  b.className = "stage " + (cls || "");
+  const ico = $("[data-ico]", b), m = $("[data-meta]", b);
+  const s = STAGE_BY_ID[id];
+  if (cls === "running") ico.innerHTML = '<span class="spin"></span>';
+  else if (cls === "done") ico.innerHTML = "✓";
+  else if (cls === "error") ico.innerHTML = "!";
+  else ico.textContent = s.num;
+  if (meta) m.textContent = meta;
+}
+
+function updateProgress() {
+  const done = Object.keys(state.results).length;
+  $("#progNum").textContent = `${done}/${STAGES.length}`;
+  $("#progWord").textContent = done === STAGES.length ? "complete" : "stages complete";
+  $("#progBar").style.width = (done / STAGES.length * 100) + "%";
+  $("#runbar").style.display = done ? "flex" : "none";
+}
+
+function addEvent(kind, html) {
+  const e = el("div", "event " + kind, `
+    <span class="gutter"><span class="d"></span><span class="line"></span></span>
+    <span class="ev-body"><span class="ev-t">${html}</span></span>`);
+  $("#stream").appendChild(e);
+  autoScroll();
+  return e;
+}
+
+let userScrolled = false;
+function autoScroll() {
+  if (userScrolled) return;
+  const c = $("#canvas");
+  if (window.innerWidth <= 900) window.scrollTo({ top: document.body.scrollHeight, behavior:"smooth" });
+  else c.scrollTop = c.scrollHeight;
+}
+
+function renderCard(stage, data, source) {
+  const old = $("#card-" + stage.id); if (old) old.remove();
+  let inner = "";
+  try { inner = RENDER[stage.id](data); }
+  catch (err) { inner = `<p class="muted">Could not render this stage: ${esc(err.message)}</p>`; }
+  const card = el("article", "card", `
+    <header>
+      <span class="num">${stage.num}</span>
+      <h2>${esc(stage.name)}</h2>
+      <span class="src ${source === "claude" ? "live" : ""}">${source === "claude" ? "generated by claude" : "authored baseline"}</span>
+    </header>
+    <div class="cbody">${inner}</div>`);
+  card.id = "card-" + stage.id;
+  $("#stream").appendChild(card);
+  if (stage.id === "proto") mountPrototype(data.spec || STAGE_BY_ID.proto.baseline.spec);
+  autoScroll();
+  return card;
+}
+/* ==========================================================================
+   CLAUDE CLIENT — direct from the browser, user's own key
+   ========================================================================== */
+const API = "https://api.anthropic.com/v1";
+const headers = () => ({
+  "content-type": "application/json",
+  "x-api-key": state.key,
+  "anthropic-version": "2023-06-01",
+  "anthropic-dangerous-direct-browser-access": "true"
+});
+
+async function listModels() {
+  const res = await fetch(`${API}/models?limit=100`, { headers: headers() });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(res.status === 401 ? "That key was rejected (401)." : `Could not reach the API (${res.status}). ${t.slice(0,140)}`);
+  }
+  const j = await res.json();
+  return (j.data || []).map(m => ({ id: m.id, name: m.display_name || m.id }));
+}
+
+const SYSTEM = `You are a senior product designer and UX researcher producing a design-assignment submission.
+
+Rules:
+- Be specific and concrete. Real numbers, real method names, real trade-offs.
+- Never write filler like "conduct user research" without saying which method, why, and with whom.
+- Every recommendation must be traceable to a user need or a research finding.
+- Write in clear British-English prose. No marketing tone, no exclamation marks, no emoji.
+- Prefer decisions over options. Say what you would do and why, including what you would cut.
+- Respond only by calling the provided tool. Do not write prose outside the tool call.`;
+
+function contextFor(stageIdx) {
+  const parts = [`DESIGN BRIEF — ${state.brief.title}\n${state.brief.text}`];
+  for (let i = 0; i < stageIdx; i++) {
+    const s = STAGES[i], r = state.results[s.id];
+    if (r) parts.push(`--- Output of stage ${s.num} (${s.name}) ---\n${JSON.stringify(r)}`);
+  }
+  return parts.join("\n\n");
+}
+
+/* Streams a forced tool call and returns the parsed tool input. */
+async function callStage(stage, stageIdx, onDelta) {
+  const body = {
+    model: state.model,
+    max_tokens: 4096,
+    system: SYSTEM,
+    tools: [stage.tool],
+    tool_choice: { type: "tool", name: stage.tool.name },
+    stream: true,
+    messages: [{
+      role: "user",
+      content: `${contextFor(stageIdx)}\n\n--- YOUR TASK ---\nProduce stage ${stage.num}: ${stage.name}. ` +
+               `Build on every earlier stage — this is one continuous piece of thinking, not a fresh start. ` +
+               `Call ${stage.tool.name} and fill every field.`
+    }]
+  };
+
+  const res = await fetch(`${API}/messages`, { method:"POST", headers: headers(), body: JSON.stringify(body) });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); msg = (j.error && j.error.message) || msg; } catch (e) {}
+    if (res.status === 401) msg = "API key rejected (401). Check the key in Connect Claude.";
+    if (res.status === 429) msg = "Rate limited (429). Wait a moment and run again.";
+    throw new Error(msg);
+  }
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", json = "";
+
+  while (true) {
+    if (state.aborted) { try { reader.cancel(); } catch (e) {} throw new Error("Run stopped.");}
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const raw = line.slice(5).trim();
+      if (!raw || raw === "[DONE]") continue;
+      let ev; try { ev = JSON.parse(raw); } catch (e) { continue; }
+      if (ev.type === "content_block_delta" && ev.delta && ev.delta.type === "input_json_delta") {
+        json += ev.delta.partial_json || "";
+        onDelta && onDelta(json);
+      } else if (ev.type === "content_block_start" && ev.content_block && ev.content_block.type === "tool_use" && ev.content_block.input) {
+        const pre = JSON.stringify(ev.content_block.input);
+        if (pre !== "{}") { json += pre; onDelta && onDelta(json); }
+      } else if (ev.type === "error") {
+        throw new Error((ev.error && ev.error.message) || "Stream error");
+      }
+    }
+  }
+
+  if (!json.trim()) throw new Error("The model returned an empty tool call.");
+  try { return JSON.parse(json); }
+  catch (e) { throw new Error("The model's structured output could not be parsed."); }
+}
+
+/* ==========================================================================
+   THE RUN LOOP
+   ========================================================================== */
+async function run() {
+  if (state.running) { state.aborted = true; return; }
+
+  state.running = true; state.aborted = false; userScrolled = false;
+  state.results = {}; state.sources = {};
+  $("#hero").style.display = "none";
+  $("#stream").innerHTML = "";
+  STAGES.forEach(s => railState(s.id, "", s.meta));
+  updateProgress();
+  setRunning(true);
+
+  const live = !!state.key && !!state.model;
+  addEvent("", `<b>Brief loaded</b> — ${esc(state.brief.title)}`);
+  addEvent("", live
+    ? `Running <b>7 stages</b> with <b>${esc(state.model)}</b>. Each stage is given every earlier stage as context.`
+    : `Running <b>7 stages</b> from the authored baseline. <a href="#" id="lnkKey">Connect an API key</a> to have Claude regenerate each stage live.`);
+  const lk = $("#lnkKey"); if (lk) lk.onclick = e => { e.preventDefault(); openModal("keyScrim"); };
+
+  for (let i = 0; i < STAGES.length; i++) {
+    const stage = STAGES[i];
+    if (state.aborted) break;
+
+    railState(stage.id, "running", stage.verb + "…");
+    const head = addEvent("think", `<b>${stage.num}</b> ${esc(stage.verb)}`);
+
+    for (const t of stage.think) {
+      if (state.aborted) break;
+      await sleep(live ? 180 : 320);
+      addEvent("", esc(t));
+    }
+    if (state.aborted) break;
+
+    let data = stage.baseline, source = "baseline";
+
+    if (live) {
+      const ev = addEvent("tool", `<b>${esc(stage.tool.name)}</b> — streaming structured output`);
+      const wire = el("div", "wire", '<span class="cur"></span>');
+      $(".ev-body", ev).appendChild(wire);
+      try {
+        data = await callStage(stage, i, partial => {
+          const tail = partial.slice(-460);
+          wire.innerHTML = esc(tail) + '<span class="cur"></span>';
+          wire.scrollTop = wire.scrollHeight;
+        });
+        source = "claude";
+        wire.innerHTML = esc(JSON.stringify(data).slice(0, 460)) + "…";
+        railState(stage.id, "running", "rendering");
+      } catch (err) {
+        if (state.aborted) break;
+        wire.remove();
+        addEvent("err", `${esc(err.message)} — falling back to the authored baseline for this stage.`);
+        data = stage.baseline; source = "baseline";
+      }
+    } else {
+      await sleep(260);
+    }
+
+    if (state.aborted) break;
+    state.results[stage.id] = data;
+    state.sources[stage.id] = source;
+    railState(stage.id, "done", source === "claude" ? "generated · claude" : "baseline");
+    addEvent("done", `<b>${esc(stage.name)}</b> complete`);
+    renderCard(stage, data, source);
+    updateProgress();
+    await sleep(120);
+  }
+
+  if (state.aborted) {
+    addEvent("err", "Run stopped.");
+    STAGES.forEach(s => { if (!state.results[s.id]) railState(s.id, "", s.meta); });
+  } else {
+    addEvent("done", `<b>All seven stages complete.</b> Use <em>Export submission</em> in the sidebar for a standalone copy.`);
+  }
+
+  state.running = false;
+  setRunning(false);
+  updateProgress();
+}
+
+function setRunning(on) {
+  const label = on ? "Stop" : (Object.keys(state.results).length ? "Run again" : "Run agent");
+  $("#runLabel").textContent = label;
+  $("#runBtn").classList.toggle("primary", !on);
+  [$("#runBtn2"), $("#runBtn3")].forEach(b => { if (b) b.disabled = on; });
+}
+/* ==========================================================================
+   THE PROTOTYPE — a working currency converter, driven by the stage-07 spec
+   ========================================================================== */
+const P = { from:"USD", to:"INR", amount:1000, view:"convert", spec:null, series:null, sheetFor:null, q:"" };
+
+function seededSeries(from, to, rate) {
+  /* Deterministic illustrative 90-day walk, used only when real history can't be
+     fetched. Mean-reverting so today lands at a plausible point in the range
+     rather than always at the top. */
+  let seed = 0; const k = from + to;
+  for (let i = 0; i < k.length; i++) seed = (seed * 31 + k.charCodeAt(i)) % 100000;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const out = []; let v = 1;
+  for (let i = 0; i < 90; i++) { v = v * (1 + (rnd() - 0.5) * 0.012) + (1 - v) * 0.02; out.push(v); }
+  const k2 = rate / out[out.length - 1];
+  return out.map(x => x * k2);
+}
+
+async function loadHistory(from, to) {
+  const start = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 6000);
+    const res = await fetch(`https://api.frankfurter.dev/v1/${start}..?base=${from}&symbols=${to}`, { signal: ctl.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const j = await res.json();
+    const vals = Object.keys(j.rates || {}).sort().map(d => j.rates[d][to]).filter(v => typeof v === "number");
+    return vals.length > 12 ? vals : null;
+  } catch (e) { return null; }
+}
+
+function sparkPath(vals, w, h) {
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  return vals.map((v, i) => `${i ? "L" : "M"}${(i / (vals.length - 1) * w).toFixed(1)},${(h - (v - min) / span * h).toFixed(1)}`).join(" ");
+}
+
+function mountPrototype(spec) {
+  P.spec = spec || {};
+  P.from = CUR[P.spec.defaultFrom] ? P.spec.defaultFrom : "USD";
+  P.to   = CUR[P.spec.defaultTo]   ? P.spec.defaultTo   : "INR";
+  P.amount = (P.spec.quickAmounts && P.spec.quickAmounts[2]) || 1000;
+  P.view = "convert";
+  P.series = null;
+  paint();                                         // render from the snapshot immediately
+  loadRates(P.from).then(paint);                   // upgrade to live rates when they land
+  refreshSeries();
+}
+
+async function refreshSeries() {
+  P.series = null; paint();
+  const h = await loadHistory(P.from, P.to);
+  P.series = h || seededSeries(P.from, P.to, rateOf(P.from, P.to) || 1);
+  P.seriesLive = !!h;
+  paint();
+}
+
+const ICON = {
+  chev:'<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>',
+  swap:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 17l-3-3M7 17l3-3M17 20V7M17 7l-3 3M17 7l3 3"/></svg>',
+  search:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  check:'<svg class="ck" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  wifi:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg>',
+  batt:'<svg width="16" height="10" viewBox="0 0 26 12" fill="none"><rect x=".6" y=".6" width="21" height="10.8" rx="3" stroke="currentColor" stroke-opacity=".45"/><rect x="2.4" y="2.4" width="15" height="7.2" rx="1.6" fill="currentColor"/><path d="M23.4 4.2v3.6a2.4 2.4 0 0 0 0-3.6z" fill="currentColor" fill-opacity=".45"/></svg>',
+  tabs:{
+    convert:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3"/></svg>',
+    watch:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>',
+    rates:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l5-6 4 4 4-7 5 5"/></svg>'
+  }
+};
+
+function paint() {
+  const scr = $("#protoScreen"); if (!scr) return;
+  const sp = P.spec || {};
+  const rate = rateOf(P.from, P.to);
+  const cf = CUR[P.from] || CUR.USD, ct = CUR[P.to] || CUR.INR;
+  const converted = rate ? P.amount * rate : NaN;
+  const now = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+  const quick = (sp.quickAmounts && sp.quickAmounts.length ? sp.quickAmounts : [100,500,1000,2400]).slice(0,4);
+  const watch = (sp.watchlist && sp.watchlist.length ? sp.watchlist : ["EUR","GBP","JPY"]).filter(c => CUR[c] && c !== P.from);
+
+  const curBtn = (c, side) => `
+    <button class="curbtn" data-pick="${side}">
+      <span class="flag">${c.flag}</span><span class="code">${c.code}</span>${ICON.chev}
+    </button>`;
+
+  /* ---- view: convert ---- */
+  const inStr = fmtField(P.amount, cf.code), outStr = fmtMoney(converted, ct.code);
+  const convertView = `
+    <div class="convcard">
+      <div class="ccrow">
+        ${curBtn(cf, "from")}
+        <input class="amt" id="amtIn" inputmode="decimal" value="${inStr}" style="font-size:${amtSize(inStr)}px" aria-label="Amount in ${cf.name}">
+      </div>
+      <div class="swapline">
+        <span class="ln"></span>
+        <button class="swapbtn" id="swapBtn" aria-label="Swap currencies">${ICON.swap}</button>
+        <span class="ln"></span>
+      </div>
+      <div class="ccrow">
+        ${curBtn(ct, "to")}
+        <input class="amt out" id="amtOut" inputmode="decimal" value="${outStr}" style="font-size:${amtSize(outStr)}px" aria-label="Amount in ${ct.name}">
+      </div>
+      <div class="ratebar">
+        <span>1 ${cf.code} = <span class="rv">${fmtRate(rate)}</span> ${ct.code}</span>
+        <span class="age ${fx.live ? "" : "stale"}"><span class="led"></span>${fx.live ? ageText(fx.stamp) : "offline snapshot"}</span>
+      </div>
+    </div>
+
+    <div class="chips">
+      ${quick.map(a => `<button class="chip ${Number(a) === Number(P.amount) ? "on" : ""}" data-amt="${a}">${cf.sym}${Number(a).toLocaleString()}</button>`).join("")}
+    </div>
+
+    <div class="sechead">${esc(sp.insightTitle || "What you'll actually get")}</div>
+    <div class="honest">
+      <div class="ht">${cf.sym}${Number(P.amount).toLocaleString()} → ${ct.code}<span class="bdg">HONEST</span></div>
+      <div class="hs">${esc(sp.insightSub || "The same amount, through five routes. The difference is the part nobody shows you.")}</div>
+      ${COST_MODEL.map(m => {
+        const got = converted * (1 - m.pct / 100);
+        const lost = converted - got;
+        const width = 100 - (m.pct / 10 * 100);
+        return `<div class="hrow ${m.tone}">
+          <span class="hl">
+            <span class="hn">${m.name}</span>
+            <span class="hd">${m.note}${m.pct ? ` · −${m.pct}%` : ""}</span>
+            <span class="hbar"><i style="width:${clamp(width, 8, 100)}%"></i></span>
+          </span>
+          <span class="hv">${ct.sym}${fmtMoney(got, ct.code)}${m.pct ? `<br><span style="font-size:9.5px;font-weight:600;color:#DC2626">−${ct.sym}${fmtMoney(lost, ct.code)}</span>` : ""}</span>
+        </div>`;
+      }).join("")}
+      <div class="hfoot">Airport bureau costs you <b>${ct.sym}${fmtMoney(converted * 0.094, ct.code)}</b> more than a digital transfer on this amount. Typical published markups; the global average cost of sending money is <b>6.36%</b> (World Bank, Q3 2025).</div>
+    </div>`;
+
+  /* ---- view: watchlist ---- */
+  const watchView = `
+    <div class="convcard" style="padding:13px 14px">
+      <div class="ccrow">
+        ${curBtn(cf, "from")}
+        <input class="amt" id="amtIn" inputmode="decimal" value="${fmtField(P.amount, cf.code)}" style="font-size:${Math.min(23, amtSize(fmtField(P.amount, cf.code)))}px" aria-label="Amount to watch">
+      </div>
+    </div>
+    <div class="sechead">Converted to<a href="#" data-noop>Edit</a></div>
+    ${watch.concat([P.to]).filter((v,i,a) => a.indexOf(v) === i).map(code => {
+      const c = CUR[code], r = rateOf(P.from, code);
+      const d = ((code.charCodeAt(0) + code.charCodeAt(2)) % 9 - 4) / 10;
+      return `<div class="wrow">
+        <span class="wf">${c.flag}</span>
+        <span class="wi"><span class="wc">${c.code}</span><span class="wn">${esc(c.name)}</span></span>
+        <span class="wv"><span class="wa">${c.sym}${fmtMoney(P.amount * (r || 0), code)}</span><br>
+        <span class="wd ${d >= 0 ? "up" : "dn"}">${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}%</span></span>
+      </div>`;
+    }).join("")}
+    <div class="hfoot" style="padding:10px 2px 0;border:none">Daily movement is illustrative in this prototype. Live mid-market rates ${fx.live ? "are loaded" : "were unavailable, so a dated snapshot is shown"}.</div>`;
+
+  /* ---- view: rates ---- */
+  const s = P.series;
+  let rangeRead = "Loading 90-day history…", pct = 0;
+  if (s && s.length) {
+    const min = Math.min(...s), max = Math.max(...s);
+    pct = Math.round((rate - min) / ((max - min) || 1) * 100);
+    rangeRead = `Today is better than <b>${pct}%</b> of the last 90 days for ${P.from}→${P.to}.`;
+  }
+  const ratesView = `
+    <div class="sparkbox">
+      <div class="sh"><span class="st">${P.from} → ${P.to}</span><span class="sc">90 days${P.seriesLive ? "" : " · illustrative"}</span></div>
+      ${s ? `<svg viewBox="0 0 240 52" preserveAspectRatio="none" aria-label="90 day rate trend">
+        <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0E9F6E" stop-opacity=".22"/><stop offset="100%" stop-color="#0E9F6E" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="${sparkPath(s,240,48)} L240,52 L0,52 Z" fill="url(#pg)"/>
+        <path d="${sparkPath(s,240,48)}" fill="none" stroke="#0E9F6E" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>` : `<div style="height:52px;display:grid;place-items:center;color:var(--p-mut);font-size:11px">loading…</div>`}
+      <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:11px;color:var(--p-mut)">
+        <span>Low ${s ? fmtRate(Math.min(...s)) : "—"}</span>
+        <span style="font-weight:680;color:var(--p-ink)">Now ${fmtRate(rate)}</span>
+        <span>High ${s ? fmtRate(Math.max(...s)) : "—"}</span>
+      </div>
+    </div>
+    <div class="honest" style="margin-top:11px">
+      <div class="ht">Timing</div>
+      <div class="hs" style="margin:0">${rangeRead}</div>
+      <div class="hbar" style="margin-top:10px"><i style="width:${clamp(pct,2,100)}%"></i></div>
+      <div class="hfoot">Plain language instead of candlesticks — the read that Meera and Daniel actually need, without a trading interface on the home screen.</div>
+    </div>
+    <div class="sechead">Alert</div>
+    <div class="wrow" style="padding:12px">
+      <span class="wi"><span class="wc">Notify me above</span><span class="wn">${P.from} → ${P.to}</span></span>
+      <span class="wv"><span class="wa">${fmtRate(rate * 1.02)}</span></span>
+    </div>`;
+
+  scr.innerHTML = `
+    <div class="notch"></div>
+    <div class="sbar"><span>${now}</span><span class="r">${ICON.wifi}${ICON.batt}</span></div>
+    <div class="pscroll" id="pscroll">
+      <div class="phead">
+        <div>
+          <div class="h1">${esc(sp.appName || "Currenzy")}</div>
+          <div class="sub">${esc(sp.tagline || "What you'll actually get")}</div>
+        </div>
+        <div class="pavatar">${esc((sp.appName || "C").slice(0,1).toUpperCase())}</div>
+      </div>
+      <div class="offline ${fx.live ? "" : "on"}">
+        ${ICON.wifi}<span>No live connection — showing a dated snapshot, not live rates.</span>
+      </div>
+      ${P.view === "convert" ? convertView : P.view === "watch" ? watchView : ratesView}
+    </div>
+    <div class="tabbar">
+      ${[["convert","Convert"],["watch","Watchlist"],["rates","Rates"]].map(([k,l]) =>
+        `<button class="tab ${P.view===k?"on":""}" data-tab="${k}">${ICON.tabs[k]}<span class="tl">${l}</span></button>`).join("")}
+    </div>
+    <div class="sheet ${P.sheetFor ? "on" : ""}" id="sheet">
+      <div class="sheet-in">
+        <div class="sheet-h">
+          <div class="grab"></div>
+          <div class="sht">Choose ${P.sheetFor === "to" ? "destination" : "source"} currency</div>
+          <div class="search">${ICON.search}<input id="curSearch" placeholder="Search code, name or country" value="${esc(P.q)}" autocomplete="off"></div>
+        </div>
+        <div class="sheet-l">
+          ${CURRENCIES.filter(c => {
+            const q = P.q.trim().toLowerCase();
+            return !q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+          }).map(c => {
+            const sel = c.code === (P.sheetFor === "to" ? P.to : P.from);
+            return `<button class="crow ${sel?"sel":""}" data-cur="${c.code}">
+              <span class="cf">${c.flag}</span>
+              <span class="ci"><span class="cc">${c.code}</span><span class="cn">${esc(c.name)}</span></span>
+              ${sel ? ICON.check : ""}</button>`;
+          }).join("") || `<div style="padding:22px;text-align:center;color:var(--p-mut);font-size:12px">No currency matches “${esc(P.q)}”.</div>`}
+        </div>
+      </div>
+    </div>`;
+
+  wireProto();
+}
+
+function wireProto() {
+  const scr = $("#protoScreen"); if (!scr) return;
+
+  const inp = $("#amtIn", scr);
+  if (inp) {
+    inp.oninput = () => {
+      let v = inp.value.replace(/[^0-9.*+\-/() ]/g, "");
+      let n = parseFloat(v);
+      if (/[*+\-/]/.test(v)) { try { n = Function('"use strict";return(' + v + ")")(); } catch (e) {} }
+      P.amount = isFinite(n) ? n : 0;
+
+      if (P.view === "watch") {                    // watchlist recalculates every row
+        const pos = inp.selectionStart, raw = inp.value;
+        paint();
+        const again = $("#amtIn");
+        if (again) { again.value = raw; again.focus(); try { again.setSelectionRange(pos, pos); } catch (e) {} }
+        return;
+      }
+
+      inp.style.fontSize = amtSize(inp.value) + "px";
+      const out = $("#amtOut", scr), r = rateOf(P.from, P.to);
+      if (out && r) { out.value = fmtMoney(P.amount * r, P.to); out.style.fontSize = amtSize(out.value) + "px"; }
+      $$(".chip", scr).forEach(c => c.classList.toggle("on", Number(c.dataset.amt) === P.amount));
+      $$(".hrow", scr).forEach((row, i) => {
+        const m = COST_MODEL[i]; if (!m) return;
+        const got = P.amount * r * (1 - m.pct / 100);
+        const hv = $(".hv", row);
+        if (hv) hv.innerHTML = `${(CUR[P.to]||{}).sym||""}${fmtMoney(got, P.to)}` +
+          (m.pct ? `<br><span style="font-size:9.5px;font-weight:600;color:#DC2626">−${(CUR[P.to]||{}).sym||""}${fmtMoney(P.amount*r-got, P.to)}</span>` : "");
+      });
+    };
+  }
+
+  const out = $("#amtOut", scr);
+  if (out) out.oninput = () => {
+    const n = parseFloat(out.value.replace(/[^0-9.]/g, ""));
+    const r = rateOf(P.from, P.to);
+    if (isFinite(n) && r) { P.amount = n / r; const i2 = $("#amtIn", scr); if (i2) i2.value = fmtMoney(P.amount, P.from); }
+  };
+
+  const sw = $("#swapBtn", scr);
+  if (sw) {
+    if (P.swapping) { requestAnimationFrame(() => sw.classList.add("spin")); }
+    sw.onclick = () => {
+      const r = rateOf(P.from, P.to);
+      [P.from, P.to] = [P.to, P.from];
+      if (r) P.amount = Math.round(P.amount * r * 100) / 100;
+      P.swapping = true;
+      paint();                                    // instant — never wait on the network
+      setTimeout(() => { P.swapping = false; }, 400);
+      loadRates(P.from).then(paint);              // repaint again if fresher rates arrive
+      refreshSeries();
+    };
+  }
+
+  $$("[data-amt]", scr).forEach(b => b.onclick = () => { P.amount = Number(b.dataset.amt); paint(); });
+  $$("[data-tab]", scr).forEach(b => b.onclick = () => { P.view = b.dataset.tab; paint(); if (P.view === "rates" && !P.series) refreshSeries(); });
+  $$("[data-pick]", scr).forEach(b => b.onclick = () => { P.sheetFor = b.dataset.pick; P.q = ""; paint(); setTimeout(() => { const s = $("#curSearch"); if (s) s.focus(); }, 260); });
+  $$("[data-noop]", scr).forEach(b => b.onclick = e => e.preventDefault());
+
+  const q = $("#curSearch", scr);
+  if (q) {
+    q.oninput = () => {
+      P.q = q.value;
+      const pos = q.selectionStart; paint();
+      const n = $("#curSearch"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} }
+    };
+  }
+
+  $$("[data-cur]", scr).forEach(b => b.onclick = () => {
+    const code = b.dataset.cur;
+    const changedBase = P.sheetFor !== "to";
+    if (P.sheetFor === "to") P.to = code; else P.from = code;
+    P.sheetFor = null; P.q = "";
+    paint();                                       // instant
+    if (changedBase) loadRates(code).then(paint);
+    refreshSeries();
+  });
+
+  const sheet = $("#sheet", scr);
+  if (sheet) sheet.onclick = e => { if (e.target === sheet) { P.sheetFor = null; P.q = ""; paint(); } };
+}
+/* ==========================================================================
+   EXPORT
+   ========================================================================== */
+function exportSubmission() {
+  const cards = $$("#stream .card");
+  if (!cards.length) { toast("Run the agent first — there's nothing to export yet.", true); return; }
+  const css = $$("style").map(s => s.textContent).join("\n");
+  const stamp = new Date().toLocaleDateString(undefined, { year:"numeric", month:"long", day:"numeric" });
+  const body = cards.map(c => c.outerHTML).join("\n");
+
+  const doc = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(state.brief.title)} — design submission</title>
+<style>${css}
+body{overflow:auto}
+.wrap{max-width:940px;margin:0 auto;padding:40px 24px 80px}
+.exhead{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px}
+.exhead h1{font-size:30px;letter-spacing:-.03em;margin:10px 0 6px;font-weight:640}
+.exhead .m{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+.exhead p{color:var(--dim);max-width:70ch;white-space:pre-wrap;margin-top:12px;font-size:13.5px}
+.card{animation:none}
+</style></head>
+<body><div class="wrap">
+<header class="exhead">
+  <div class="m">Design submission · generated ${esc(stamp)}</div>
+  <h1>${esc(state.brief.title)}</h1>
+  <p>${esc(state.brief.text)}</p>
+</header>
+${body}
+<p style="color:var(--faint);font-size:12px;margin-top:40px;border-top:1px solid var(--line-soft);padding-top:16px">
+  Produced by Brief Agent — a seven-stage autonomous design agent. The prototype above is a static snapshot;
+  the interactive version runs at the live app.
+</p>
+</div></body></html>`;
+
+  const blob = new Blob([doc], { type:"text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = state.brief.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-submission.html";
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Submission exported as a standalone HTML file.");
+}
+
+/* ==========================================================================
+   MODALS + SETTINGS
+   ========================================================================== */
+function openModal(id) { $("#" + id).classList.add("on"); }
+function closeModal(id) { $("#" + id).classList.remove("on"); }
+
+function paintKeyState() {
+  const has = !!state.key;
+  $("#keyDot").className = "dot" + (has ? " ok" : "");
+  $("#keyLabel").textContent = has ? (state.model ? state.model.replace(/^claude-/, "").slice(0, 22) : "Key connected") : "Offline mode";
+  const ks = $("#keyState"), t = $("#keyStateText");
+  ks.className = "keystate" + (has ? " ok" : "");
+  t.textContent = has
+    ? `Connected. Stages will be generated live with ${state.model || "the selected model"}.`
+    : "No key connected — running the authored baseline.";
+  const note = $("#ctaNote");
+  if (note) note.innerHTML = has
+    ? `Connected to <strong>${esc(state.model || "Claude")}</strong>. Every stage will be reasoned out live and chained into the next.`
+    : `Runs immediately with a researched baseline — no key, no signup. Add your own Anthropic key to have Claude regenerate every stage live against whatever brief you load.`;
+}
+
+function paintModels() {
+  const sel = $("#modelSelect");
+  sel.innerHTML = "";
+  if (!state.models.length) {
+    sel.innerHTML = `<option value="">Connect a key to load models</option>`;
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  state.models.forEach(m => {
+    const o = document.createElement("option");
+    o.value = m.id; o.textContent = m.name;
+    if (m.id === state.model) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => { state.model = sel.value; store.set("model", state.model); paintKeyState(); };
+}
+
+function pickDefaultModel(models) {
+  const score = id => (/opus/.test(id) ? 3 : /sonnet/.test(id) ? 2 : /haiku/.test(id) ? 1 : 0);
+  return models.slice().sort((a, b) => score(b.id) - score(a.id) || b.id.localeCompare(a.id))[0];
+}
+
+async function saveKey() {
+  const v = $("#keyInput").value.trim();
+  if (!v) { toast("Paste a key first.", true); return; }
+  state.key = v;
+  const btn = $("#saveKey"); btn.disabled = true; btn.textContent = "Verifying…";
+  try {
+    const models = await listModels();
+    state.models = models;
+    if (!state.model || !models.some(m => m.id === state.model)) {
+      const best = pickDefaultModel(models);
+      state.model = best ? best.id : "";
+    }
+    store.set("key", state.key); store.set("model", state.model);
+    paintModels(); paintKeyState();
+    $("#modelHint").textContent = `${models.length} models available on this account.`;
+    toast("Key verified. The agent will now generate every stage live.");
+    closeModal("keyScrim");
+  } catch (err) {
+    state.key = "";
+    const ks = $("#keyState"); ks.className = "keystate bad";
+    $("#keyStateText").textContent = err.message;
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = "Save & verify";
+  }
+}
+
+function clearKey() {
+  state.key = ""; state.model = ""; state.models = [];
+  store.del("key"); store.del("model");
+  $("#keyInput").value = "";
+  paintModels(); paintKeyState();
+  toast("Key cleared. Back to the authored baseline.");
+}
+
+function openBrief() {
+  $("#briefTitleInput").value = state.brief.title;
+  $("#briefText").value = state.brief.text;
+  openModal("briefScrim");
+}
+function saveBrief() {
+  const t = $("#briefTitleInput").value.trim() || "Untitled brief";
+  const x = $("#briefText").value.trim();
+  if (!x) { toast("The brief can't be empty.", true); return; }
+  state.brief = { title:t, text:x };
+  store.set("brief", state.brief);
+  $("#briefLabel").textContent = t;
+  closeModal("briefScrim");
+  toast(state.key ? "Brief saved — run the agent to reason it out live." : "Brief saved. Connect a key to have the agent reason about it.");
+}
+
+/* ==========================================================================
+   INIT
+   ========================================================================== */
+function init() {
+  buildRail();
+  updateProgress();
+  $("#briefLabel").textContent = state.brief.title;
+
+  [["#runBtn", run], ["#runBtn2", run], ["#runBtn3", run],
+   ["#keyBtn", () => openModal("keyScrim")], ["#keyBtn2", () => openModal("keyScrim")],
+   ["#briefChip", openBrief], ["#briefBtn2", openBrief],
+   ["#saveKey", saveKey], ["#clearKey", clearKey], ["#saveBrief", saveBrief],
+   ["#exportBtn", exportSubmission], ["#exportBtn2", exportSubmission],
+   ["#resetBtn", () => {
+      state.aborted = true; state.results = {}; state.sources = {};
+      $("#stream").innerHTML = ""; $("#hero").style.display = "";
+      STAGES.forEach(s => railState(s.id, "", s.meta));
+      updateProgress(); setRunning(false); userScrolled = false;
+      toast("Run reset.");
+   }]
+  ].forEach(([sel, fn]) => { const n = $(sel); if (n) n.onclick = fn; });
+
+  $$("[data-close]").forEach(b => b.onclick = () => closeModal(b.dataset.close));
+  $$(".scrim").forEach(s => s.onclick = e => { if (e.target === s) closeModal(s.id); });
+  $$(".preset").forEach(b => b.onclick = () => {
+    const p = BRIEFS[b.dataset.preset];
+    $("#briefTitleInput").value = p.title; $("#briefText").value = p.text;
+  });
+
+  $("#keyInput").addEventListener("keydown", e => { if (e.key === "Enter") saveKey(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") $$(".scrim.on").forEach(s => closeModal(s.id));
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); run(); }
+  });
+
+  const c = $("#canvas");
+  const nearBottom = () => window.innerWidth <= 900
+    ? (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 140
+    : c.scrollTop + c.clientHeight >= c.scrollHeight - 140;
+  const onScroll = () => { if (state.running) userScrolled = !nearBottom(); };
+  c.addEventListener("scroll", onScroll, { passive:true });
+  window.addEventListener("scroll", onScroll, { passive:true });
+
+  paintModels(); paintKeyState();
+  if (state.key) {
+    $("#keyInput").value = state.key;
+    listModels()
+      .then(m => { state.models = m; if (!state.model && m.length) state.model = pickDefaultModel(m).id; paintModels(); paintKeyState(); $("#modelHint").textContent = `${m.length} models available on this account.`; })
+      .catch(() => { $("#modelHint").textContent = "Stored key could not be verified — open this panel to re-enter it."; });
+  }
+
+  loadRates("USD");
+}
+
+document.addEventListener("DOMContentLoaded", init);
+
+</script>
+</body>
+</html>
