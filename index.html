@@ -797,25 +797,38 @@ async function stream(stack, md) {
   const t0 = performance.now();
   let i = 0;
 
+  const push = () => {
+    const tk = flat[i++];
+    let p = ps[tk.pi];
+    if (!p) { p = ps[tk.pi] = document.createElement("p"); bubble.appendChild(p); }
+    let node;
+    if (tk.cls === "b") { node = document.createElement("b"); node.textContent = tk.w; }
+    else if (tk.cls === "hl") { node = document.createElement("span"); node.className = "hl"; node.textContent = tk.w; }
+    else node = document.createTextNode(tk.w);
+    p.appendChild(node);
+    p.appendChild(cur);                           // cursor trails the newest word
+  };
+
   await new Promise(done => {
-    function frame(now) {
+    let ended = false;
+    /* rAF is paused in a backgrounded tab. Without this the answer would
+       freeze mid-sentence and the composer would never unlock. */
+    const finish = () => {
+      if (ended) return;
+      ended = true;
+      clearTimeout(guard);
+      while (i < flat.length) push();
+      cur.remove(); scroll(); done();
+    };
+    const guard = setTimeout(finish, DUR + 600);
+    (function frame(now) {
+      if (ended) return;
       const target = Math.min(flat.length, Math.ceil(((now - t0) / DUR) * flat.length));
-      while (i < target) {
-        const tk = flat[i++];
-        let p = ps[tk.pi];
-        if (!p) { p = ps[tk.pi] = document.createElement("p"); bubble.appendChild(p); }
-        let node;
-        if (tk.cls === "b") { node = document.createElement("b"); node.textContent = tk.w; }
-        else if (tk.cls === "hl") { node = document.createElement("span"); node.className = "hl"; node.textContent = tk.w; }
-        else node = document.createTextNode(tk.w);
-        p.appendChild(node);
-        p.appendChild(cur);                       // cursor trails the newest word
-      }
+      while (i < target) push();
       scroll();
-      if (i >= flat.length) { cur.remove(); scroll(); done(); }
+      if (i >= flat.length) finish();
       else requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
+    })(performance.now());
   });
 }
 
