@@ -5,6 +5,10 @@ mean, fetches what it needs, shows its reasoning, and tells you what it would do
 
 **Live:** https://capricarun.github.io/currency-converter-agent/
 
+Public, no sign-in, works on any device. On a phone, open it and choose
+**Add to Home Screen** — it installs as a standalone app and still opens with
+no signal, which is when a currency agent is most useful.
+
 ---
 
 ## Why it reads as an agent
@@ -93,6 +97,22 @@ in the card, and in its own sentences. It never passes stale numbers off as live
 Route percentages are typical published markups anchored on the World Bank's
 Remittance Prices Worldwide average of 6.36% (Q3 2025). They are labelled as
 typical, not quoted as offers.
+
+## Installing and staying current
+
+The app ships a manifest and a service worker, so it installs to a home screen
+and launches full-screen with its own icon.
+
+The service worker is deliberately **network-first**. Cache-first is the usual
+choice and it is why installed web apps go stale for days — and this one was
+already being served an old build by GitHub's CDN for minutes after each
+deploy. Here the network always wins when it is reachable; the cache exists
+only so the agent still opens offline. Cross-origin rate feeds are never
+cached at all, because a stale exchange rate shown as live is the one thing
+this app refuses to do.
+
+When a new build takes over, the page reloads itself once — and only when
+replacing an existing worker, so a first install never loops.
 
 ## Running it
 
