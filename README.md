@@ -13,9 +13,10 @@ Chat bubbles alone don't make an agent — bolt them onto a converter and you ge
 slower converter. Four things do the work:
 
 **Natural language is the only input.** There are no pickers and no keypad.
-*"How much is 2,400 dollars in rupees?"*, *"₹50,000 in pounds"*, *"should I send
-money to Nigeria this week"* — names, ISO codes, countries, demonyms and symbols
-all resolve.
+*"How much is 2,400 dollars in rupees?"*, *"₹50,000 in pounds"*, *"1,000 dollars
+in Germany"*, *"convert 900 dollars to Toronto"* — currency names, ISO codes,
+countries, demonyms, major cities and symbols all resolve. You never have to
+know that Portugal is the euro or that Dubai is the dirham.
 
 **It shows its working.** Every turn opens with a live trace — `parse_request →
 convert · USD→INR · 2,400`, `fetch_rates`, `fetch_history`, `score_position` —
@@ -58,8 +59,29 @@ moment the link opens.
 | *"2,400 dollars in rupees"* | Converts, at the mid-market rate, with freshness stated |
 | *"What would actually land?"* | Five routes — mid-market, digital transfer, card, bank, bureau — with the loss in cash and a recommendation |
 | *"Is now a good time?"* | Fetches 90 days, scores today's position, gives a verdict and quantifies the upside |
+| *"Where does my money go furthest?"* | Ranks the five destinations this currency most often goes to, best first — tap one to convert |
 | *"Show the 90-day trend"* | Chart plus a plain-language read of the swing |
 | *"Watch the Swiss franc"* | Keeps it against your amount, across sessions |
+
+## Ranking the five destinations
+
+Every conversion also comes back with the five places that currency most often
+goes — real corridors, not trading volume, so INR offers USD, AED, GBP, SAR and
+SGD while GBP offers EUR, USD, INR, PKR and NGN.
+
+Ranking them needs a basis, and the converted *amounts* are no basis at all:
+¥362,880 and €2,196 are the same money. What is comparable is where each pair
+sits inside **its own** 90-day range. A pair at 92% is near its own best in three
+months; one at 20% is near its worst. That normalises to 0–100 across every
+currency, so the bars can be read against each other at a glance.
+
+Ninety days of history for all five arrives in a single request. Each row is a
+button — tapping it converts into that currency, which is the point: the
+recommendation is something you can act on rather than read.
+
+The card says plainly that a high score means *this pair is near its own 90-day
+best*, not that the currency is "strong" — a distinction that is easy to imply
+by accident and misleading if you do.
 
 ## Honest about its data
 

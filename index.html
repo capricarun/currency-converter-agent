@@ -176,8 +176,8 @@ input{font:inherit;color:inherit}
 .routes{padding:14px 16px}
 .routes .rh{font-size:12px;font-weight:640;color:var(--dim);margin-bottom:11px;
              display:flex;align-items:center;gap:7px}
-.routes .rh .pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.07em;
-  background:var(--accent-soft);color:var(--accent);padding:3px 6px;border-radius:5px}
+.routes .rh .pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.07em;flex-shrink:0;
+  white-space:nowrap;background:var(--accent-soft);color:var(--accent);padding:3px 6px;border-radius:5px}
 .route{display:flex;align-items:center;gap:10px;padding:8px 0}
 .route + .route{border-top:1px solid var(--line-2)}
 .route .ri{flex:1;min-width:0}
@@ -225,6 +225,34 @@ input{font:inherit;color:inherit}
 .grow .gv{text-align:right;flex-shrink:0}
 .grow .ga{display:block;font-size:15px;font-weight:680;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
 .grow .gr{display:block;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* top-5 destination recommendations */
+.sugg{padding:14px 16px 8px}
+.sugg .sh{font-size:12px;font-weight:640;color:var(--dim);margin-bottom:3px;
+          display:flex;align-items:center;gap:7px}
+.sugg .sh .pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.07em;flex-shrink:0;
+  white-space:nowrap;background:var(--accent-soft);color:var(--accent);padding:3px 6px;border-radius:5px}
+.sugg .ss{font-size:11px;color:var(--faint);line-height:1.45;margin-bottom:10px}
+.srow{
+  display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;text-align:left;
+  border-radius:12px;transition:background .15s,transform .1s;min-height:52px;
+}
+.srow:hover{background:var(--surface-2)}
+.srow:active{transform:scale(.985);background:var(--surface-3)}
+.srow .sf{font-size:20px;line-height:1;flex-shrink:0;width:24px;text-align:center}
+.srow .si{flex:1;min-width:0}
+.srow .sc{display:block;font-size:13px;font-weight:650}
+.srow .sn{display:block;font-size:10.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .sm{display:block;height:4px;border-radius:2px;background:var(--surface-3);margin-top:6px;overflow:hidden}
+.srow .sm i{display:block;height:100%;border-radius:2px;background:var(--accent);
+            transition:width .8s cubic-bezier(.3,1,.5,1)}
+.srow.mid .sm i{background:var(--warn)}
+.srow.low .sm i{background:var(--faint)}
+.srow .sv{text-align:right;flex-shrink:0}
+.srow .sa{display:block;font-size:14.5px;font-weight:680;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+.srow .sp{display:block;font-size:10px;font-weight:620;font-variant-numeric:tabular-nums}
+.srow .sp.hi{color:var(--accent)} .srow .sp.mid{color:var(--warn)} .srow .sp.low{color:var(--faint)}
+.sugg .sfoot{font-size:10.5px;color:var(--faint);padding:9px 8px 4px;border-top:1px solid var(--line-2);margin-top:4px;line-height:1.45}
 
 /* verdict callout */
 .verdict{
@@ -408,17 +436,23 @@ const CUR = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
 /* How people actually name currencies: the unit, the country, the adjective,
    the symbol. Longer phrases win, so "australian dollar" beats "dollar". */
 const ALIAS = {
-  USD:["american dollar","us dollar","u.s. dollar","usa","u.s.","america","american","dollar","dollars","buck","bucks","$"],
-  EUR:["euro","euros","europe","european","eurozone","€"],
-  GBP:["british pound","pound sterling","sterling","britain","british","england","english","uk pound","pound","pounds","quid","£"],
-  INR:["indian rupee","india","indian","rupee","rupees","₹","inr"],
-  JPY:["japanese yen","japan","japanese","yen","¥"],
-  AUD:["australian dollar","australia","australian","aussie dollar","aussie"],
-  CAD:["canadian dollar","canada","canadian","loonie"],
-  CHF:["swiss franc","switzerland","swiss","franc","francs"],
-  CNY:["chinese yuan","china","chinese","yuan","renminbi","rmb"],
+  USD:["american dollar","us dollar","u.s. dollar","united states","usa","u.s.","america","american",
+       "new york","dollar","dollars","buck","bucks","$"],
+  EUR:["euro","euros","europe","european","eurozone","germany","german","france","french",
+       "spain","spanish","italy","italian","portugal","portuguese","netherlands","dutch",
+       "holland","belgium","belgian","austria","austrian","ireland","irish","greece","greek",
+       "finland","finnish","slovakia","slovenia","estonia","latvia","lithuania","luxembourg",
+       "cyprus","malta","croatia","paris","berlin","madrid","rome","amsterdam","€"],
+  GBP:["british pound","pound sterling","sterling","united kingdom","great britain","britain","british",
+       "england","english","scotland","scottish","wales","welsh","london","uk pound","pound","pounds","quid","£"],
+  INR:["indian rupee","india","indian","mumbai","bengaluru","bangalore","delhi","rupee","rupees","₹","inr"],
+  JPY:["japanese yen","japan","japanese","tokyo","yen","¥"],
+  AUD:["australian dollar","australia","australian","sydney","melbourne","aussie dollar","aussie"],
+  CAD:["canadian dollar","canada","canadian","toronto","vancouver","loonie"],
+  CHF:["swiss franc","switzerland","swiss","zurich","geneva","franc","francs"],
+  CNY:["chinese yuan","china","chinese","shanghai","beijing","yuan","renminbi","rmb"],
   SGD:["singapore dollar","singapore","singaporean"],
-  AED:["uae dirham","emirati dirham","dubai","abu dhabi","uae","emirates","emirati","dirham"],
+  AED:["uae dirham","emirati dirham","united arab emirates","dubai","abu dhabi","uae","emirates","emirati","dirham"],
   SAR:["saudi riyal","saudi arabia","saudi","riyal"],
   NZD:["new zealand dollar","new zealand","kiwi dollar"],
   ZAR:["south african rand","south africa","south african","rand"],
@@ -429,7 +463,7 @@ const ALIAS = {
   IDR:["indonesian rupiah","indonesia","indonesian","rupiah"],
   PHP:["philippine peso","philippines","filipino","philippine","₱"],
   VND:["vietnamese dong","vietnam","vietnamese","dong","₫"],
-  KRW:["south korean won","south korea","korean","korea","won","₩"],
+  KRW:["south korean won","south korea","korean","korea","seoul","won","₩"],
   HKD:["hong kong dollar","hong kong","hongkong"],
   SEK:["swedish krona","sweden","swedish","krona"],
   NOK:["norwegian krone","norway","norwegian","krone"],
@@ -465,6 +499,33 @@ const LEX = (() => {
   return out.sort((a, b) => b.p.length - a.p.length);
 })();
 const SYMBOLIC = /^[^a-z0-9]+$/i;
+
+/* The destinations people actually convert into, by source currency —
+   remittance corridors and travel routes rather than trading volume. */
+const TOP_DEST = {
+  USD:["EUR","INR","GBP","JPY","MXN"], EUR:["USD","GBP","CHF","TRY","PLN"],
+  GBP:["EUR","USD","INR","PKR","NGN"], INR:["USD","AED","GBP","SAR","SGD"],
+  AED:["INR","PKR","PHP","EGP","USD"], SAR:["INR","PKR","EGP","PHP","BDT"],
+  USDX:[], JPY:["USD","KRW","THB","EUR","AUD"], AUD:["USD","NZD","GBP","EUR","IDR"],
+  CAD:["USD","EUR","INR","GBP","MXN"], SGD:["MYR","INR","IDR","USD","THB"],
+  CHF:["EUR","USD","GBP","INR","THB"], NGN:["USD","GBP","EUR","GHS","ZAR"],
+  ZAR:["USD","GBP","EUR","AUD","INR"], MYR:["SGD","IDR","THB","USD","INR"],
+  PHP:["USD","AED","SGD","JPY","SAR"], NZD:["AUD","USD","GBP","EUR","FJD"],
+  KRW:["USD","JPY","CNY","EUR","THB"], CNY:["USD","HKD","JPY","EUR","SGD"],
+  HKD:["CNY","USD","JPY","TWD","GBP"], THB:["USD","JPY","EUR","SGD","MYR"],
+  BRL:["USD","EUR","ARS","GBP","JPY"], MXN:["USD","EUR","CAD","COP","BRL"],
+  TRY:["EUR","USD","GBP","RUB","SAR"], PKR:["AED","SAR","USD","GBP","QAR"],
+  BDT:["SAR","AED","USD","MYR","KWD"], LKR:["USD","AED","GBP","AUD","SAR"],
+  EGP:["USD","SAR","AED","KWD","EUR"], KES:["USD","GBP","EUR","UGX","ZAR"],
+  VND:["USD","JPY","KRW","AUD","SGD"], IDR:["USD","SGD","MYR","SAR","AUD"]
+};
+const DEST_FALLBACK = ["USD","EUR","GBP","INR","JPY"];
+function topDestinations(from) {
+  const list = (TOP_DEST[from] || DEST_FALLBACK).filter(c => CUR[c] && c !== from);
+  const out = list.slice(0, 5);
+  for (const c of DEST_FALLBACK) { if (out.length >= 5) break; if (c !== from && !out.includes(c)) out.push(c); }
+  return out.slice(0, 5);
+}
 
 /* Indicative snapshot, base USD — only used when every endpoint fails, and
    the agent always says so rather than passing it off as live. */
@@ -555,6 +616,36 @@ function synth(from, to, rate) {
   for (let i = 0; i < 90; i++) { v = v * (1 + (rnd() - 0.5) * 0.012) + (1 - v) * 0.02; out.push(v); }
   const k2 = rate / out[out.length - 1];
   return out.map(x => x * k2);
+}
+
+/* Where today sits inside each pair's own 90-day range — one request for all
+   five destinations, so the ranking costs a single round trip. */
+async function multiRange(from, codes) {
+  const start = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  const out = {};
+  let live = false;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 7000);
+    const res = await fetch(`https://api.frankfurter.dev/v1/${start}..?base=${from}&symbols=${codes.join(",")}`, { signal:c.signal });
+    clearTimeout(t);
+    if (res.ok) {
+      const j = await res.json();
+      const days = Object.keys(j.rates || {}).sort();
+      codes.forEach(code => {
+        const v = days.map(d => j.rates[d][code]).filter(x => typeof x === "number");
+        if (v.length > 12) { out[code] = v; live = true; }
+      });
+    }
+  } catch (e) {}
+  codes.forEach(code => {
+    if (!out[code]) out[code] = synth(from, code, rateOf(from, code) || 1);
+  });
+  return { series: out, live };
+}
+function position(vals, now) {
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  return clamp(Math.round(((now - lo) / ((hi - lo) || 1)) * 100), 0, 100);
 }
 
 /* ── formatting ─────────────────────────────────────────────── */
@@ -657,6 +748,7 @@ const RX = {
   route:   /\b(cheapest|best way|actually (get|receive|land)|what will i (get|receive)|how much (will|would) i (get|receive)|lands?|fees?|fee\b|cost|costs|markup|bureau|western union|which (way|route|method)|hidden)\b/,
   trend:   /\b(trend|history|historical|moved|moving|going up|going down|chart|graph|over the last|past \d|high|low|range|volatile)\b/,
   rate:    /\b(rate|exchange rate|worth|how much is (one|1|a)\b)\b/,
+  suggest: /\b(where (should|shall|do|does|can|would)|suggest|recommend|best (currency|place|option|country)|top (5|five)|which currency|go(es)? furthest|my options|what are my options)\b/,
   greet:   /^\s*(hi|hey|hello|yo|good (morning|afternoon|evening)|sup|namaste)\b/
 };
 
@@ -672,6 +764,7 @@ function understand(text) {
   else if (RX.showList.test(t) && !RX.watchAdd.test(t)) intent = "showList";
   else if (RX.watchDel.test(t) && codes.length) intent = "watchDel";
   else if (RX.watchAdd.test(t) && codes.length && !RX.route.test(t)) intent = "watchAdd";
+  else if (RX.suggest.test(t)) intent = "suggest";
   else if (RX.timing.test(t)) intent = "timing";
   else if (RX.route.test(t)) intent = "route";
   else if (RX.trend.test(t)) intent = "trend";
@@ -914,6 +1007,39 @@ function gridCard(from, amount, codes) {
   return el("card grid", rows || `<div style="padding:20px;text-align:center;color:var(--faint);font-size:13px">Nothing on the list yet.</div>`);
 }
 
+/* Five destinations, ranked by how today compares with each pair's own
+   90-day range — the only basis on which currencies are comparable, since
+   the amounts themselves are not. Every row is tappable. */
+function suggestCard(from, amount, rows, live) {
+  const body = rows.map(r => {
+    const band = r.pos >= 65 ? "" : r.pos >= 35 ? "mid" : "low";
+    const lab  = r.pos >= 65 ? "hi" : r.pos >= 35 ? "mid" : "low";
+    const c = CUR[r.code];
+    return `<button class="srow ${band}" data-dest="${esc(r.code)}">
+      <span class="sf">${c.flag}</span>
+      <span class="si">
+        <span class="sc">${esc(c.code)}</span>
+        <span class="sn">${esc(c.name)}</span>
+        <span class="sm"><i style="width:${r.pos}%"></i></span>
+      </span>
+      <span class="sv">
+        <span class="sa">${esc(cash(amount * r.rate, r.code))}</span>
+        <span class="sp ${lab}">${r.pos}% of 90d</span>
+      </span>
+    </button>`;
+  }).join("");
+  const card = el("card sugg", `
+    <div class="sh"><span class="pill">PICK ONE</span> Where ${esc(cash(amount, from))} goes furthest</div>
+    <div class="ss">Ranked by how today's rate compares with each pair's own 90-day range — tap one to convert.</div>
+    ${body}
+    <div class="sfoot">${live ? "Ranges from ECB reference rates." : "Ranges modelled — the live history feed is unreachable."} A high score means this pair is near its own 90-day best, not that the currency is \u201cstrong\u201d.</div>`);
+  card.addEventListener("click", e => {
+    const b = e.target.closest("[data-dest]");
+    if (b && !S.busy) { buzz(); turn_(`convert ${plain(amount)} ${from} to ${b.dataset.dest}`); }
+  });
+  return card;
+}
+
 function verdictCard(text, tone) {
   return el("verdict" + (tone === "warn" ? " warn" : ""), `
     <span class="vi"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5-4.7-4.6 6.5-.9z"/></svg></span>
@@ -958,6 +1084,22 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+/* Rank the corridors people actually use from this currency. */
+async function buildSuggestions(a, from, amount) {
+  const dests = topDestinations(from);
+  const { series, live } = await multiRange(from, dests);
+  await a.step("rank_destinations", `${dests.length} corridors · ${live ? "ECB" : "modelled"}`);
+  const rows = dests.map(code => {
+    const rate = rateOf(from, code);
+    const vals = series[code];
+    /* if history is live but spot is not, judge the position against the
+       history's own latest point rather than mixing two sources */
+    const now = (live && !fx.live) ? vals[vals.length - 1] : rate;
+    return { code, rate, pos: position(vals, now) };
+  }).sort((x, y) => y.pos - x.pos);
+  return { rows, live };
+}
+
 const rateNote = () => fx.live ? "mid-market, " + ago(fx.stamp) : "an indicative snapshot — I can't reach the rate feeds right now";
 
 async function turn_(text) {
@@ -986,7 +1128,25 @@ async function turn_(text) {
           await a.say(`~${cash(r.amount, r.from)}~ comes to *${cash(r.amount * rate, r.to)}*.\n\nThat's the mid-market rate — the number everyone quotes. What you'd actually receive depends on how you move it.`);
         }
         a.attach(convCard(r.from, r.to, r.amount));
+        const sug = await buildSuggestions(a, r.from, r.amount);
+        a.attach(suggestCard(r.from, r.amount, sug.rows, sug.live));
         a.chips(["What would actually land?", "Is now a good time?", "Show the 90-day trend"]);
+        break;
+      }
+
+      case "suggest": {
+        await a.step("parse_request", `destinations from ${r.from}`);
+        await loadRates("USD");
+        await a.step("fetch_rates", fx.live ? `${r.from} spot` : "offline snapshot");
+        remember(r);
+        const sg = await buildSuggestions(a, r.from, r.amount);
+        const best = sg.rows[0], worst = sg.rows[sg.rows.length - 1];
+        await a.say(
+          `These are the five places ~${r.from}~ most often goes, ranked by how today compares with each pair's own ninety-day range.\n\n` +
+          `*${best.code}* is the standout — today sits at ~${best.pos}%~ of its 90-day range. ${worst.code} is the weakest of the five at ${worst.pos}%. ` +
+          `Tap any of them and I'll convert ${cash(r.amount, r.from)} into it.`);
+        a.attach(suggestCard(r.from, r.amount, sg.rows, sg.live));
+        a.chips(["What would actually land?", "Is now a good time?", `Convert 5,000 ${r.from}`]);
         break;
       }
 
@@ -1110,8 +1270,8 @@ async function turn_(text) {
         await a.step("parse_request", "capabilities");
         await a.say(
           `I'm a currency agent. Ask me in your own words — I'll work out what you mean, fetch what I need, and tell you what I'd do.\n\n` +
-          `I can *convert* any amount, show *what actually lands* after each kind of transfer, read the *90-day trend*, tell you whether *now is a good time*, and keep a *watchlist*. I remember the pair we're on, so "what about pounds?" just works.`);
-        a.chips(["Convert 2,400 USD to INR", "What would actually land?", "Is now a good time?", "Watch the yen"]);
+          `I can *convert* any amount — name a currency, a country or a city, whichever comes to mind. I show *what actually lands* after each kind of transfer, rank the *five places your money goes furthest* today, read the *90-day trend*, say whether *now is a good time*, and keep a *watchlist*. I remember the pair we're on, so "what about pounds?" just works.`);
+        a.chips(["Convert 2,400 USD to INR", "Where does my money go furthest?", "1,000 dollars in Germany", "Watch the yen"]);
         break;
       }
 
@@ -1164,7 +1324,7 @@ async function open_() {
       `Welcome back. Since you were last here ~${from}→${to}~ has moved *${move >= 0 ? "up" : "down"} ${Math.abs(move).toFixed(2)}%* — ` +
       `on ${cash(amount, from)} that's about *${cash(diff, to)} ${move >= 0 ? "more" : "less"}* than last time.`);
     a.attach(convCard(from, to, amount));
-    a.chips(["Is now a good time?", "What would actually land?", "Show the 90-day trend"]);
+    a.chips(["Is now a good time?", "Where does my money go furthest?", "What would actually land?"]);
   } else if (returning) {
     await a.say(`Welcome back. ~${from}→${to}~ is *${rateStr(rate)}* — barely moved since your last visit.`);
     a.attach(convCard(from, to, amount));
@@ -1173,7 +1333,7 @@ async function open_() {
     await a.say(
       `I'm Currenzy — a currency agent. Ask me in plain language and I'll fetch what I need, show my working, and tell you what I'd do.\n\n` +
       `Right now ~${from}→${to}~ is *${rateStr(rate)}*, ${rateNote()}.`);
-    a.chips(["Convert 1,000 USD to INR", "What would actually land?", "Is now a good time?", "What can you do?"]);
+    a.chips(["Convert 1,000 USD to INR", "Where does my money go furthest?", "Is now a good time?", "What can you do?"]);
   }
 
   if (rate) { store.set("lastRate", rate); store.set("lastPair", from + to); }
@@ -1187,7 +1347,13 @@ const EXAMPLES = [
   ["Converting", [
     ["How much is 2,400 dollars in rupees?", "amount + currency names"],
     ["500 euros to yen", "codes, names or symbols"],
-    ["₹50,000 in pounds", "symbols work too"]
+    ["₹50,000 in pounds", "symbols work too"],
+    ["1,000 dollars in Germany", "name a country instead of a currency"],
+    ["Convert 50,000 rupees to Dubai", "cities work as well"]
+  ]],
+  ["Choosing", [
+    ["Where does my money go furthest?", "top five destinations, ranked"],
+    ["What are my options from USD?", "tap a suggestion to convert"]
   ]],
   ["Deciding", [
     ["What would actually land?", "five routes, loss in cash"],
