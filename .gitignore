@@ -1,0 +1,8 @@
+.DS_Store
+
+# Pages is served straight from main by GitHub's branch-based build, so the
+# Actions workflow is not needed. Left on disk only because this sandbox
+# cannot delete files in a connected folder.
+.github/
+.t1
+.t3
