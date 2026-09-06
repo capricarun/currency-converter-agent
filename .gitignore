@@ -1,11 +1,1 @@
 .DS_Store
-
-# Pages is served straight from main by GitHub's branch-based build, so the
-# Actions workflow is not needed. These stay on disk only because the Cowork
-# sandbox cannot delete files inside a connected folder.
-.github/
-.ovtest
-.ovtest2
-.t1
-.t3
-*.stale.*

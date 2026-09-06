@@ -1,80 +1,61 @@
-# Brief Agent — Currency Converter
+# Currenzy
 
-An autonomous UX design agent that takes a design brief and runs it end to end: research plan,
-competitive teardown, audience sizing, personas, prioritised features, information architecture —
-and finishes by building a working interactive prototype you can actually type into.
+A currency converter that answers the question people are actually asking.
 
 **Live:** https://capricarun.github.io/currency-converter-agent/
 
-Pre-loaded with this brief:
-
-> **Design assignment: Currency Converter Mobile App.** Design a currency converter app (mobile or
-> web) that provides users with a seamless and intuitive experience for converting currencies.
-> Approach the project by considering: required research to understand user needs, target audience,
-> key features and functions, and relevant user persona(s).
+Every converter on the market shows you a rate. Almost none show you what will
+actually land in your account. Currenzy makes that gap the centre of the product.
 
 ---
 
-## What it does
+## The design bet
 
-Seven chained stages. Each one receives every earlier stage as context, so the personas are built
-from the audience work, the features are argued from the personas, and the prototype is compiled
-from the feature set.
+A teardown of the eight leading converters — XE, Wise, Revolut, OANDA, Google,
+Currency Converter Plus and two top free Android apps — turns up the same shape
+every time: a mid-market rate, a currency picker, and offline caching. What
+almost none of them do is connect that reference rate to the money you receive.
 
-| # | Stage | Output |
-|---|-------|--------|
-| 01 | Brief intake | Objective, scope, success metrics, constraints, open questions |
-| 02 | Research plan | Six methods with samples and timings, non-leading research questions |
-| 03 | Competitive teardown | Eight apps torn down, patterns extracted, the unclaimed gap |
-| 04 | Audience & sizing | Five segments with shares, market context with sources, primary target |
-| 05 | Personas | Three personas with jobs-to-be-done, plus an anti-persona |
-| 06 | Feature definition | Fourteen features scored on MoSCoW, impact and effort |
-| 07 | IA, flow & prototype | Screen map, primary flow, and the live prototype |
+The global average cost of sending money is **6.36%** of the amount sent
+(World Bank, Remittance Prices Worldwide, Q3 2025). That cost is mostly hidden
+inside the rate rather than shown as a fee. So the home screen converts, and the
+screen below it shows the same amount through five routes — mid-market, digital
+transfer, card abroad, bank transfer, airport bureau — with the loss stated in
+cash, not percent. Percentages are abstract; people act on money.
 
-## Two ways to run it
+## What's in it
 
-**Without a key** — the agent runs immediately from an authored baseline built from desk research
-(World Bank remittance pricing, FXC Intelligence flow data, RBI remittance figures, and a hands-on
-teardown of the eight leading converter apps). Nothing to sign up for.
+**Convert** — a custom keypad rather than the OS keyboard, so the layout never
+jumps and the whole task stays on one screen. Type into either side; the other
+recalculates. The keypad steps aside as soon as you scroll to the comparison,
+and returns when you scroll back.
 
-**With your own Anthropic key** — every stage is regenerated live by Claude, using forced tool calls
-against a JSON schema per stage, streamed as it is written. Load a different brief and the agent
-genuinely re-reasons about it rather than replaying a script.
+**Watchlist** — one amount held against every currency you care about, each row
+carrying its own rate.
 
-The key is stored in your browser's local storage and posted directly to `api.anthropic.com`.
-This is a static page on GitHub Pages: there is no backend, and nothing is proxied through any
-server. Clear it any time from the same panel.
+**Rates** — ninety days of history from the ECB, read in plain language
+("today's rate beats 62% of the last 90 days") instead of a chart you have to
+interpret. Alert threshold set 2% above today.
 
-## The prototype
+## Details worth noting
 
-Stage 07 compiles a real converter, not a picture of one:
+- **Offline is a state, not an error.** Rates come from key-less endpoints with
+  a dated snapshot behind them. When the snapshot is in use the app says so —
+  it never passes stale numbers off as live. The freshness pill carries the age
+  in words.
+- **Amounts never clip.** Type sizes are set by measuring real overflow rather
+  than counting characters, because the room left depends on how wide the
+  currency chip beside it is. Past a billion it falls back to compact notation.
+- **Swap never waits on the network.** It repaints immediately from what's
+  already loaded and upgrades in the background if fresher rates arrive.
+- **Light and dark** both first-class, following the system with a manual
+  override.
+- Haptics on every key, 44px minimum targets, safe-area insets, reduced-motion
+  respected.
 
-- Convert-as-you-type in both directions, with expression input (`25*3` works)
-- 48 currencies, searchable by code or name, in a bottom sheet
-- One-tap swap that repaints instantly and never blocks on the network
-- Live mid-market rates from key-less endpoints, with a dated offline snapshot as fallback —
-  and an honest banner when that fallback is in use
-- **"What you'll actually get"** — the same amount through five routes (mid-market, digital
-  transfer, card abroad, bank, airport bureau), with the loss shown in cash rather than percent.
-  This is the design bet the teardown argues for: every incumbent shows a rate, almost none show
-  what lands.
-- 90-day trend read in plain language — "better than 70% of the last 90 days" — instead of a chart
+## Running it
 
-## Design notes
-
-The interface is a dark agent console; the prototype inside it is a light mobile app. That contrast
-is deliberate — it keeps the thing being designed visually distinct from the thing doing the
-designing.
-
-Rate data comes from [Frankfurter](https://frankfurter.dev/) (ECB and 84 central banks, no key,
-no quota) with [ExchangeRate-API's open endpoint](https://www.exchangerate-api.com/docs/free) as a
-fallback. Cost-model percentages are anchored on the World Bank's Remittance Prices Worldwide
-average of 6.36% (Q3 2025) and published card-scheme markups; they are labelled as typical, not
-quoted.
-
-## Running it locally
-
-One file, no build step, no dependencies.
+One file. No build step, no dependencies, no backend.
 
 ```bash
 git clone https://github.com/capricarun/currency-converter-agent.git
@@ -82,10 +63,10 @@ cd currency-converter-agent
 open index.html          # or: python3 -m http.server 8000
 ```
 
-## Exporting
-
-**Export submission** produces a standalone HTML file of the whole run — every stage, styled,
-self-contained — suitable for sending on or printing to PDF.
+Rate data: [Frankfurter](https://frankfurter.dev/) (ECB and 84 central banks),
+falling back to [ExchangeRate-API's open endpoint](https://www.exchangerate-api.com/docs/free).
+Route percentages are typical published markups, labelled as such in the app —
+they are not live quotes.
 
 ---
 
