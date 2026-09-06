@@ -748,7 +748,7 @@ function beginAgent() {
       if (!traceEl) { traceEl = el("trace"); stack.appendChild(traceEl); }
       const row = el("step run", `<span class="ic"><span class="spin"></span></span><span class="bd"><span class="nm">${esc(name)}</span></span>`);
       traceEl.appendChild(row); scroll();
-      await wait(ms == null ? 240 + Math.random() * 180 : ms);
+      await wait(ms == null ? 170 + Math.random() * 130 : ms);
       row.className = "step done";
       row.innerHTML = `<span class="ic">${TICK}</span><span class="bd"><span class="nm">${esc(name)}</span> <span class="rs">→ ${esc(result)}</span></span>`;
       scroll();
@@ -779,30 +779,44 @@ function tokens(md) {
   });
   return out;
 }
+/* Frame-driven rather than one timer per word: a per-token await plus a scroll
+   (which forces a reflow) made a long answer take ten seconds on a real device.
+   This reveals however many tokens the elapsed time calls for, once per frame,
+   and finishes inside a fixed budget no matter how long the text is. */
 async function stream(stack, md) {
   const bubble = el("bubble");
   stack.appendChild(bubble);
-  const paras = md.split("\n\n");
-  const total = tokens(md).length;
-  const pace = clamp(Math.round(700 / Math.max(total, 1)), 8, 30);
-  const cur = document.createElement("span"); cur.className = "cursor";
 
-  for (let i = 0; i < paras.length; i++) {
-    const p = document.createElement("p");
-    bubble.appendChild(p);
-    p.appendChild(cur);
-    for (const tk of tokens(paras[i])) {
-      let node;
-      if (tk.cls === "b") { node = document.createElement("b"); node.textContent = tk.w; }
-      else if (tk.cls === "hl") { node = document.createElement("span"); node.className = "hl"; node.textContent = tk.w; }
-      else node = document.createTextNode(tk.w);
-      p.insertBefore(node, cur);
+  const flat = [];
+  md.split("\n\n").forEach((para, pi) => tokens(para).forEach(t => flat.push({ ...t, pi })));
+  const ps = [];                                  // paragraphs created on first use
+  const cur = document.createElement("span");
+  cur.className = "cursor";
+
+  const DUR = clamp(flat.length * 8, 260, 850);
+  const t0 = performance.now();
+  let i = 0;
+
+  await new Promise(done => {
+    function frame(now) {
+      const target = Math.min(flat.length, Math.ceil(((now - t0) / DUR) * flat.length));
+      while (i < target) {
+        const tk = flat[i++];
+        let p = ps[tk.pi];
+        if (!p) { p = ps[tk.pi] = document.createElement("p"); bubble.appendChild(p); }
+        let node;
+        if (tk.cls === "b") { node = document.createElement("b"); node.textContent = tk.w; }
+        else if (tk.cls === "hl") { node = document.createElement("span"); node.className = "hl"; node.textContent = tk.w; }
+        else node = document.createTextNode(tk.w);
+        p.appendChild(node);
+        p.appendChild(cur);                       // cursor trails the newest word
+      }
       scroll();
-      await wait(pace);
+      if (i >= flat.length) { cur.remove(); scroll(); done(); }
+      else requestAnimationFrame(frame);
     }
-  }
-  cur.remove();
-  scroll();
+    requestAnimationFrame(frame);
+  });
 }
 
 /* ── blocks ─────────────────────────────────────────────────── */
